@@ -100,5 +100,51 @@ read the result.
 
 ## Status
 
-Scaffold complete. Phases 0–6 are defined in
+_Last updated: 2026-10-03._
+
+The project is **mid-Phase 3 (SQL analytics)**. Phases 0–2 are complete and
+verified end-to-end; the analytical queries are being validated one by one
+against the live warehouse.
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| 0 | Environment & toolchain (PostgreSQL 17, Python, psql) | ✅ Complete |
+| 1 | Data acquisition & profiling (2025 single-year DfT extract) | ✅ Complete |
+| 2 | Star schema + idempotent ETL (3 facts, 2 dimensions) | ✅ Complete & verified |
+| 3 | SQL analytics — BQ1–BQ8 | 🔄 In progress (BQ1–BQ6 validated) |
+| 4 | Power BI report (model, DAX, 4 pages) | ⏳ Not started |
+| 5 | Insights & recommendations | ⏳ Not started |
+| 6 | Documentation, testing & presentation | ⏳ Not started |
+
+### Business-question validation (Phase 3)
+
+Each query is run against the live `road_safety` database and cross-checked
+for sanity before it is marked validated.
+
+| Query | Question | Status |
+|-------|----------|--------|
+| BQ1 | Casualty trend over time | ✅ Validated |
+| BQ2 | Highest-risk districts / road classes | ✅ Validated (351 real districts) |
+| BQ3 | Casualties by weather / lighting / surface | ✅ Validated (all sums exact) |
+| BQ4 | Age/sex profile of casualties vs drivers | ✅ Validated (18 bands, no spurious zeros) |
+| BQ5 | Vehicle types & manoeuvres in serious/fatal | ✅ Validated (motorcycles dominate) |
+| BQ6 | Geographic high-risk clusters | ✅ Validated (urban clusters) |
+| BQ7 | Vulnerable road-user (ped/cyclist) share | ⏳ Pending |
+| BQ8 | Time-of-day / day-of-week severity patterns | ⏳ Pending |
+
+### Notable data findings so far
+
+- **2025 `local_authority_district` is 100% `-1`** (unknown). District
+  attribution therefore uses `local_authority_ons_district` (ONS codes),
+  which resolved `dim_location` from 396 → 2,492 rows and restored real
+  district-level analysis for BQ2/BQ6.
+- **BQ4 age-band defect fixed** — casualties and drivers are now mapped onto a
+  common reporting grid (18 bands) so the two populations are directly
+  comparable with no artificial zero rows.
+- **BQ5 signal:** motorcycles are disproportionately represented in
+  serious/fatal casualties relative to their share of traffic.
+
+Full detail lives in `docs/data_quality.md` and `docs/report.md`.
+
+Phases 0–6 are defined in
 `Plans_data/01_Data_Analyst_Road_Safety_Analytics.txt`.
