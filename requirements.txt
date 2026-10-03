@@ -1,0 +1,6 @@
+# Road Safety Analytics — ETL dependencies
+# Pinned for reproducible builds (supply-chain hygiene).
+pandas==2.3.3
+psycopg2-binary==2.9.12
+# Optional: for quick cross-checks of SQL results during development
+# numpy>=1.24

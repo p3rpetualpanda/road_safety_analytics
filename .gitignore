@@ -1,0 +1,32 @@
+# Raw data (large, re-downloadable from data.dft.gov.uk/road-accidents-safety-data/)
+data/*.csv
+data/*.zip
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Power BI
+*.pbix
+*.pbix-template
+*.pbip
+*.pbit
+*.conn
+*.json
+!package.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs & temp
+*.log
+*.tmp
+*.bak

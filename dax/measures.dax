@@ -1,0 +1,100 @@
+// ============================================================
+// Road Safety Analytics — Power BI DAX measures
+// ============================================================
+// Add these to a calculated table or to the relevant fact tables
+// in Power BI Desktop (Modeling > New measure).
+//
+// Conventions:
+//   - Measures live on the fact tables they aggregate.
+//   - Use the dim_date table for time intelligence.
+//   - "Serious+Fatal" = severity IN {1, 2}.
+// ============================================================
+
+// ------------------------------------------------------------
+// fact_accident measures
+// ------------------------------------------------------------
+Total Accidents =
+COUNTROWS ( fact_accident )
+
+Accidents =
+COUNTROWS ( fact_accident )
+
+// ------------------------------------------------------------
+// fact_casualty measures
+// ------------------------------------------------------------
+Total Casualties =
+COUNTROWS ( fact_casualty )
+
+Serious Fatal Casualties =
+CALCULATE (
+    COUNTROWS ( fact_casualty ),
+    fact_casualty[severity] IN { 1, 2 }
+)
+
+Serious Fatal Share =
+DIVIDE (
+    [Serious Fatal Casualties],
+    [Total Casualties],
+    0
+)
+
+// Casualties per 100 accidents (severity-adjusted rate)
+Casualties Per 100 Accidents =
+DIVIDE (
+    [Total Casualties] * 100,
+    [Total Accidents],
+    0
+)
+
+// Vulnerable road user share of all casualties
+VRU Share =
+DIVIDE (
+    CALCULATE (
+        COUNTROWS ( fact_casualty ),
+        fact_casualty[vru_flag] = TRUE
+    ),
+    [Total Casualties],
+    0
+)
+
+// VRU share of serious/fatal casualties only
+VRU Serious Fatal Share =
+DIVIDE (
+    CALCULATE (
+        COUNTROWS ( fact_casualty ),
+        fact_casualty[vru_flag] = TRUE,
+        fact_casualty[severity] IN { 1, 2 }
+    ),
+    [Serious Fatal Casualties],
+    0
+)
+
+// ------------------------------------------------------------
+// Time intelligence (requires a marked date table: dim_date)
+// ------------------------------------------------------------
+Serious Fatal Casualties LY =
+CALCULATE (
+    [Serious Fatal Casualties],
+    DATEADD ( dim_date[full_date], -1, YEAR )
+)
+
+Serious Fatal YoY Change =
+[Serious Fatal Casualties] - [Serious Fatal Casualties LY]
+
+Serious Fatal YoY % =
+DIVIDE (
+    [Serious Fatal YoY Change],
+    [Serious Fatal Casualties LY],
+    0
+)
+
+// ------------------------------------------------------------
+// Top-N helper (use with a TOPN visual or a calculated table)
+// ------------------------------------------------------------
+// Serious-injury rate per district (for a ranking visual)
+Serious Per Accident by District =
+DIVIDE (
+    [Serious Fatal Casualties],
+    [Total Accidents],
+    0
+)

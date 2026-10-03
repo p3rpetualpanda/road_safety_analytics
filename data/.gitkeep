@@ -1,0 +1,3 @@
+# This directory holds the raw STATS19 CSVs (accidents.csv, vehicles.csv,
+# casualties.csv). They are git-ignored because they are large and
+# re-downloadable from data.dft.gov.uk/road-accidents-safety-data/. This file keeps the folder in Git.
