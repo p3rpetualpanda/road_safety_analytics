@@ -81,6 +81,14 @@ fix them silently.
 - Some high vehicle/manoeuvre/propulsion codes (e.g. 17–21, 33, 90,
   97, 98, 99) are not in the published code tables and are rendered as
   "Unknown".
+- **Large "Unknown" buckets in `vehicle_type` and `manoeuvre`.** In the
+  2025 extract, ~67% of vehicle records have `vehicle_type = "Unknown"` and
+  ~61.6% have `manoeuvre = "Unknown"`. This is a genuine source-data gap
+  (the new coded spec leaves these fields blank or uses unmapped codes for a
+  large share of records), not an ETL bug — the values are verified against
+  the live warehouse. Any vehicle-type or manoeuvre analysis should treat
+  the "Unknown" bar as a real, dominant category and be read with that
+  caveat; it is not a rendering artefact.
 
 ## 5. Row-count reconciliation
 
@@ -101,3 +109,4 @@ Fill in after each load (copy from the ETL log):
 | 2026-10-03 | Initial log created | jake |
 | 2026-10-03 | Reconciled to the live `data.dft.gov.uk` column spec: new source, coded-field decoding (decisions 8–14), `speed_limit` moved to `fact_accident`, `protection`/`driver_impaired` dropped, `time` now `HH:MM`, unknown-age code `-1` added | jake |
 | 2026-10-03 | Discovered `local_authority_district` is 100% `-1` in 2025 (degenerate district dim). Switched district source to `local_authority_ons_district` (ONS codes); re-ran ETL (`dim_location` 396 → 2,492); re-validated BQ2 (351 real districts) | jake |
+| 2026-10-04 | Documented the large "Unknown" buckets in `vehicle_type` (~67%) and `manoeuvre` (~61.6%) as a genuine 2025-extract source-data gap (verified against the live warehouse), not an ETL bug | jake |

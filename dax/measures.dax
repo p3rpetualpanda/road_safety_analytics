@@ -100,3 +100,30 @@ DIVIDE (
     [Total Accidents],
     0
 )
+
+// ------------------------------------------------------------
+// Visual-specific measures
+//
+// These exist because of how Power BI filter direction works: a measure
+// only responds to filters on the table it counts (or tables whose filter
+// flows INTO that table). So the "right" measure depends on which table the
+// filter column lives in:
+//   - vehicle_type / manoeuvre live in fact_vehicle  -> count fact_vehicle
+//   - weather / lighting live in fact_accident        -> count fact_accident
+// ------------------------------------------------------------
+
+// Vehicles involved in accidents (for the vehicle_type & manoeuvre visuals).
+// COUNTROWS(fact_accident) would NOT respond to vehicle_type/manoeuvre
+// filters because those columns live in fact_vehicle, not fact_accident.
+Vehicles Involved =
+COUNTROWS ( fact_vehicle )
+
+// Serious/fatal ACCIDENTS (for the weather & lighting visuals).
+// Weather and lighting are recorded per accident, so counting the accidents
+// that were serious/fatal is the correct semantics. COUNTROWS(fact_casualty)
+// would NOT respond to these filters because they live in fact_accident.
+Serious Fatal Accidents =
+CALCULATE (
+    COUNTROWS ( fact_accident ),
+    fact_accident[severity] IN { 1, 2 }
+)

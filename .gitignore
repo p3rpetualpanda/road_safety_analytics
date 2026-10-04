@@ -13,6 +13,7 @@ env/
 
 # Power BI
 *.pbix
+!road_safety_visuals.pbix
 *.pbix-template
 *.pbip
 *.pbit

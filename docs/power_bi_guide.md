@@ -20,10 +20,10 @@ Work top to bottom. Each step links to the section with the detail.
 | 4 | **Close & Apply** — verify 5 tables appear in the Fields pane | §3 |
 | 5 | Wire the 5 single-directional relationships (or apply `dax/model.tmdl`) | §2 |
 | 6 | Mark `dim_date` as the date table on `full_date` | §2 |
-| 7 | Add the 11 DAX measures (or they come with the TMDL) | §4 |
+| 7 | Add the 13 DAX measures (or they come with the TMDL) | §4 |
 | 8 | Build the 4 report pages | §5 |
 | 9 | Add slicers / drill-down / tooltips + theme + "how to read" note | §6 |
-| 10 | Save as `report/road_safety.pbix` and tick the checklist | §7 |
+| 10 | Save as `road_safety_visuals.pbix` (repo root) and tick the checklist | §7 |
 
 > **Fastest path:** steps 5–7 collapse into one action if you apply
 > `dax/model.tmdl` via Tabular Editor 3 (see §4 shortcut).
@@ -182,9 +182,35 @@ definition one at a time). Summary of what's provided:
 | `Serious Fatal YoY Change` | current − prior year |
 | `Serious Fatal YoY %` | % change vs prior year |
 | `Serious Per Accident by District` | serious/fatal ÷ accidents (ranking) |
+| `Vehicles Involved` | row count of `fact_vehicle` (vehicle_type / manoeuvre visuals) |
+| `Serious Fatal Accidents` | accidents where `severity IN {1,2}` (weather / lighting visuals) |
 
 > **Note:** `Total Accidents` and the old `Accidents` duplicate were merged —
 > only `Total Accidents` remains (it is the one referenced by other measures).
+
+### Why two "extra" measures exist (filter direction)
+
+Power BI filters flow **only from the "one" side to the "many" side** of a
+relationship. A measure therefore only responds to filters on the table it
+counts (or tables whose filter flows *into* that table). This produced two
+"every bar shows the same number" bugs during the build, fixed by counting the
+table the filter actually lives in:
+
+- **`vehicle_type` / `manoeuvre` live in `fact_vehicle`.** `Total Accidents`
+  (`COUNTROWS(fact_accident)`) did **not** respond to them — every bar showed
+  the full 101,525. Fix: `Vehicles Involved = COUNTROWS(fact_vehicle)`.
+- **`weather` / `lighting` live in `fact_accident`.** `Serious Fatal
+  Casualties` (`COUNTROWS(fact_casualty)`) did **not** respond to them — every
+  bar showed 29,296. Fix: `Serious Fatal Accidents`, which counts the
+  serious/fatal *accidents* (the correct semantics, since weather/lighting are
+  recorded per accident).
+
+> **Sorting gotcha:** to sort a text column (e.g. `day_of_week_name`) by a
+> numeric column (`day_of_week`), use the **Sort by field** icon in the
+> Fields-pane toolbar. If the numeric column is *already* set to sort by the
+> text column, setting the reverse raises a **circular dependency** error.
+> Clear the existing sort on `day_of_week` first, then set
+> `day_of_week_name` → sort by `day_of_week`.
 
 ---
 
@@ -192,38 +218,41 @@ definition one at a time). Summary of what's provided:
 
 Narrative flow: **what happened → where → who/what → why (conditions)**.
 
+> **What was actually built:** all four pages use **bar charts** (plus KPI
+> cards on Page 1). The earlier draft of this guide described a map, donut and
+> matrix; the final build is simpler and more consistent. The two
+> visual-specific measures in §4 (`Vehicles Involved`, `Serious Fatal
+> Accidents`) exist specifically to make the Page 3 and Page 4 bar charts
+> respond to their filters.
+
 ### Page 1 — Executive overview
 - **KPI cards:** `Total Accidents`, `Total Casualties`,
   `Serious Fatal Casualties`, `Serious Fatal Share`, `VRU Share`.
-- **Line chart:** `Serious Fatal Casualties` by `dim_date[month_name]`
+- **Bar chart:** `Serious Fatal Casualties` by `dim_date[month_name]`
   (2025 monthly trend).
-- **Slicers:** severity, `dim_date[quarter]`.
 - *Stakeholder question answered:* "How bad was 2025, and when did it peak?"
 
 ### Page 2 — Geographic / district analysis
-- **Map visual:** `dim_location[lat]` / `dim_location[long]`,
-  plotted by `Serious Fatal Casualties`.
-- **Top-N table:** top 15 districts by `Serious Per Accident by District`.
-- **Bar chart:** serious/fatal by `dim_location[urban_rural]`.
-- **Slicers:** `dim_location[police_force]`, `dim_location[road_class]`.
+- **Bar chart:** `Serious Fatal Casualties` by `dim_location[district]`.
+- **Bar chart:** `Serious Fatal Casualties` by `dim_location[urban_rural]`.
+- **Bar chart:** `Serious Per Accident by District` (district ranking).
 - *Stakeholder question answered:* "Where should we focus resources?"
 
 ### Page 3 — Driver & vehicle analysis
-- **Clustered bar:** casualties by `fact_casualty[age_band]` × `sex`.
-- **Donut:** `fact_vehicle[vehicle_type]` share of vehicle records.
-- **Matrix:** `fact_vehicle[manoeuvre]` × severity.
-- **Slicers:** `fact_vehicle[vehicle_type]`, `fact_casualty[sex]`.
+- **Bar chart:** `Vehicles Involved` by `fact_vehicle[vehicle_type]`.
+- **Bar chart:** `Vehicles Involved` by `fact_vehicle[manoeuvre]`.
+- **Bar chart:** `Total Casualties` by `fact_casualty[age_band]`.
+- **Bar chart:** `Total Casualties` by `fact_casualty[sex]`.
 - *Stakeholder question answered:* "Who is involved, and in what vehicle role?"
 
-### Page 4 — Vulnerable road users & conditions
-- **KPI cards:** `VRU Share`, `VRU Serious Fatal Share`.
-- **Stacked bar:** `fact_casualty[casualty_type]` × severity
-  (shows the pedestrian-driven VRU signal).
-- **Bar chart:** serious/fatal by `fact_accident[weather]`.
-- **Bar chart:** serious/fatal by `fact_accident[lighting]`.
-- **Slicers:** `fact_accident[lighting]`, `fact_accident[weather]`.
-- *Stakeholder question answered:* "Which road users and conditions drive
-  the worst outcomes?"
+### Page 4 — Time & conditions
+- **Bar chart:** `Serious Fatal Accidents` by `fact_accident[weather]`.
+- **Bar chart:** `Serious Fatal Accidents` by `fact_accident[lighting]`.
+- **Bar chart:** `Serious Fatal Casualties` by `dim_date[day_of_week_name]`
+  (sorted by `day_of_week` — see the sorting gotcha in §4).
+- **Bar chart:** `Serious Fatal Casualties` by `dim_date[month_name]`.
+- *Stakeholder question answered:* "When and under what conditions do the
+  worst outcomes happen?"
 
 ---
 
@@ -243,7 +272,7 @@ Narrative flow: **what happened → where → who/what → why (conditions)**.
 
 ## 7. Deliverable checklist
 
-- [ ] `.pbix` saved to the repo (or a clear export) — `report/road_safety.pbix`
+- [ ] `.pbix` saved to the repo — `road_safety_visuals.pbix` (repo root)
 - [ ] DAX in version control — `dax/measures.dax` ✅
 - [ ] Data model in version control — `dax/model.tmdl` ✅
 - [ ] Data model documented — this file, §2 ✅
