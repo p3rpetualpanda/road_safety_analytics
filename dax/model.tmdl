@@ -1,0 +1,336 @@
+// ============================================================
+// Road Safety Analytics — Power BI data model (TMDL)
+// ============================================================
+// Tabular Model Definition Language (TMDL) — a text, version-
+// controllable definition of the Phase 4 data model.
+//
+// Contains:
+//   - 5 tables (2 dimensions + 3 facts)
+//   - 5 single-directional relationships (acyclic star schema)
+//   - dim_date marked as the official date table (full_date)
+//   - all DAX measures (mirrors dax/measures.dax)
+//
+// Apply it (pick one):
+//   A. Tabular Editor 3 (free): open the .pbix, right-click the
+//      model > "Replace Model with TMDL" > select this file >
+//      Process.
+//   B. pbi CLI:  pbi model apply --file dax/model.tmdl --pbix report/road_safety.pbix
+//
+// Column types mirror sql/schema.sql. Surrogate keys are kept as
+// string (they are TEXT in the warehouse).
+// ============================================================
+
+model
+{
+    culture = "en-GB";
+    defaultPowerBIDataSourceVersion = "powerBI_V3";
+}
+
+// ------------------------------------------------------------
+// dim_date — calendar dimension (official date table)
+// ------------------------------------------------------------
+table dim_date
+{
+    isDateTable = true;
+    dateColumn = dim_date[full_date];
+
+    column date_key
+    {
+        type = number;
+    }
+    column full_date
+    {
+        type = dateTime;
+    }
+    column year
+    {
+        type = number;
+    }
+    column month
+    {
+        type = number;
+    }
+    column month_name
+    {
+        type = string;
+    }
+    column quarter
+    {
+        type = number;
+    }
+    column day_of_week
+    {
+        type = number;
+    }
+    column day_of_week_name
+    {
+        type = string;
+    }
+    column is_weekend
+    {
+        type = boolean;
+    }
+}
+
+// ------------------------------------------------------------
+// dim_location — geographic / road dimension
+// ------------------------------------------------------------
+table dim_location
+{
+    column location_key
+    {
+        type = number;
+    }
+    column district
+    {
+        type = string;
+    }
+    column road_class
+    {
+        type = string;
+    }
+    column urban_rural
+    {
+        type = string;
+    }
+    column police_force
+    {
+        type = string;
+    }
+    column lat
+    {
+        type = number;
+    }
+    column long
+    {
+        type = number;
+    }
+}
+
+// ------------------------------------------------------------
+// fact_accident — grain = one accident
+// ------------------------------------------------------------
+table fact_accident
+{
+    column accident_index
+    {
+        type = string;
+    }
+    column date_key
+    {
+        type = number;
+    }
+    column location_key
+    {
+        type = number;
+    }
+    column accident_time
+    {
+        type = time;
+    }
+    column severity
+    {
+        type = number;
+    }
+    column weather
+    {
+        type = string;
+    }
+    column lighting
+    {
+        type = string;
+    }
+    column road_surface
+    {
+        type = string;
+    }
+    column num_vehicles
+    {
+        type = number;
+    }
+    column num_casualties
+    {
+        type = number;
+    }
+    column speed_limit
+    {
+        type = number;
+    }
+
+    relationship to_dim_date
+    {
+        fromColumn = fact_accident[date_key];
+        toColumn = dim_date[date_key];
+    }
+    relationship to_dim_location
+    {
+        fromColumn = fact_accident[location_key];
+        toColumn = dim_location[location_key];
+    }
+}
+
+// ------------------------------------------------------------
+// fact_casualty — grain = one casualty
+// ------------------------------------------------------------
+table fact_casualty
+{
+    column casualty_rec
+    {
+        type = string;
+    }
+    column accident_index
+    {
+        type = string;
+    }
+    column date_key
+    {
+        type = number;
+    }
+    column location_key
+    {
+        type = number;
+    }
+    column age
+    {
+        type = number;
+    }
+    column age_band
+    {
+        type = string;
+    }
+    column sex
+    {
+        type = string;
+    }
+    column casualty_type
+    {
+        type = string;
+    }
+    column severity
+    {
+        type = number;
+    }
+    column vru_flag
+    {
+        type = boolean;
+    }
+
+    relationship to_dim_date
+    {
+        fromColumn = fact_casualty[date_key];
+        toColumn = dim_date[date_key];
+    }
+    relationship to_dim_location
+    {
+        fromColumn = fact_casualty[location_key];
+        toColumn = dim_location[location_key];
+    }
+}
+
+// ------------------------------------------------------------
+// fact_vehicle — grain = one vehicle
+// No date_key / location_key of its own: chains through
+// fact_accident (accident_index) to reach the dimensions.
+// ------------------------------------------------------------
+table fact_vehicle
+{
+    column vehicle_rec
+    {
+        type = string;
+    }
+    column accident_index
+    {
+        type = string;
+    }
+    column vehicle_type
+    {
+        type = string;
+    }
+    column manoeuvre
+    {
+        type = string;
+    }
+    column engine_size_cc
+    {
+        type = number;
+    }
+    column propellant
+    {
+        type = string;
+    }
+    column driver_age_band
+    {
+        type = string;
+    }
+    column driver_sex
+    {
+        type = string;
+    }
+
+    relationship to_fact_accident
+    {
+        fromColumn = fact_vehicle[accident_index];
+        toColumn = fact_accident[accident_index];
+    }
+}
+
+// ------------------------------------------------------------
+// Measures (mirrors dax/measures.dax)
+// ------------------------------------------------------------
+measure Total Accidents
+{
+    expression = COUNTROWS ( fact_accident );
+}
+
+measure Total Casualties
+{
+    expression = COUNTROWS ( fact_casualty );
+}
+
+measure Serious Fatal Casualties
+{
+    expression = CALCULATE ( COUNTROWS ( fact_casualty ), fact_casualty[severity] IN { 1, 2 } );
+}
+
+measure Serious Fatal Share
+{
+    expression = DIVIDE ( [Serious Fatal Casualties], [Total Casualties], 0 );
+}
+
+measure Casualties Per 100 Accidents
+{
+    expression = DIVIDE ( [Total Casualties] * 100, [Total Accidents], 0 );
+}
+
+measure VRU Share
+{
+    expression = DIVIDE ( CALCULATE ( COUNTROWS ( fact_casualty ), fact_casualty[vru_flag] = TRUE ), [Total Casualties], 0 );
+}
+
+measure VRU Serious Fatal Share
+{
+    expression = DIVIDE ( CALCULATE ( COUNTROWS ( fact_casualty ), fact_casualty[vru_flag] = TRUE, fact_casualty[severity] IN { 1, 2 } ), [Serious Fatal Casualties], 0 );
+}
+
+// Time intelligence — requires dim_date marked as the official
+// date table (done above). With the single-year 2025 extract,
+// LY / YoY measures return blank/0 (no prior-year rows).
+measure Serious Fatal Casualties LY
+{
+    expression = CALCULATE ( [Serious Fatal Casualties], DATEADD ( dim_date[full_date], -1, YEAR ) );
+}
+
+measure Serious Fatal YoY Change
+{
+    expression = [Serious Fatal Casualties] - [Serious Fatal Casualties LY];
+}
+
+measure Serious Fatal YoY %
+{
+    expression = DIVIDE ( [Serious Fatal YoY Change], [Serious Fatal Casualties LY], 0 );
+}
+
+measure Serious Per Accident by District
+{
+    expression = DIVIDE ( [Serious Fatal Casualties], [Total Accidents], 0 );
+}

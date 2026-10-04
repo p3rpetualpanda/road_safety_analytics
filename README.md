@@ -28,7 +28,8 @@ road_safety_analytics/
 ├── etl/
 │   └── load.py               <- idempotent ETL: CSV -> clean -> warehouse
 ├── dax/
-│   └── measures.dax          <- Power BI DAX measures (KPIs, time intelligence)
+│   ├── measures.dax          <- Power BI DAX measures (KPIs, time intelligence)
+│   └── model.tmdl            <- full data model in TMDL (tables, relationships, measures)
 └── docs/
     ├── data_quality.md       <- data-quality & governance log
     ├── power_bi_guide.md     <- Phase 4 Power BI build guide (connection, model, pages)

@@ -120,6 +120,13 @@ All measures are in [`dax/measures.dax`](../dax/measures.dax). Add them via
 **Modeling → New measure** (or paste the whole file into a new measure's
 definition one at a time). Summary of what's provided:
 
+> **Shortcut — apply the whole model at once:** [`dax/model.tmdl`](../dax/model.tmdl)
+> encodes the 5 tables, the 5 relationships, the marked date table, and every
+> measure above in one text file. Apply it with Tabular Editor 3 (free):
+> open the `.pbix` → right-click the model → **Replace Model with TMDL** →
+> select `dax/model.tmdl` → **Process**. That replaces the manual
+> relationship-wiring and measure-pasting in §2 and §4 in one step.
+
 | Measure | Purpose |
 |---|---|
 | `Total Accidents` | row count of `fact_accident` |
@@ -196,6 +203,7 @@ Narrative flow: **what happened → where → who/what → why (conditions)**.
 
 - [ ] `.pbix` saved to the repo (or a clear export) — `report/road_safety.pbix`
 - [ ] DAX in version control — `dax/measures.dax` ✅
+- [ ] Data model in version control — `dax/model.tmdl` ✅
 - [ ] Data model documented — this file, §2 ✅
 - [ ] 4 report pages with narrative flow — §5 ✅
 - [ ] Slicers / drill-down / tooltips — §6 ✅
