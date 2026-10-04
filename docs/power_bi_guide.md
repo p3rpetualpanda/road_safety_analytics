@@ -8,6 +8,28 @@ All DAX lives in version control at [`dax/measures.dax`](../dax/measures.dax).
 
 ---
 
+## Run-through (do these in order)
+
+Work top to bottom. Each step links to the section with the detail.
+
+| # | Step | Where |
+|---|---|---|
+| 1 | Confirm the `road_safety` DB is up and loaded (101,525 accidents / 127,883 casualties) | §1 |
+| 2 | Connect: Get Data → PostgreSQL → `localhost` / `road_safety` / `postgres:postgres` | §1 |
+| 3 | Load the 5 tables (Navigator GUI **or** paste `dax/power_query.m`) | §3 |
+| 4 | **Close & Apply** — verify 5 tables appear in the Fields pane | §3 |
+| 5 | Wire the 5 single-directional relationships (or apply `dax/model.tmdl`) | §2 |
+| 6 | Mark `dim_date` as the date table on `full_date` | §2 |
+| 7 | Add the 11 DAX measures (or they come with the TMDL) | §4 |
+| 8 | Build the 4 report pages | §5 |
+| 9 | Add slicers / drill-down / tooltips + theme + "how to read" note | §6 |
+| 10 | Save as `report/road_safety.pbix` and tick the checklist | §7 |
+
+> **Fastest path:** steps 5–7 collapse into one action if you apply
+> `dax/model.tmdl` via Tabular Editor 3 (see §4 shortcut).
+
+---
+
 ## 1. Connection — Import mode (and why)
 
 **Choice: Import.** Not DirectQuery.
@@ -99,7 +121,27 @@ Without this, the `DATEADD` measures in `dax/measures.dax` will not resolve.
 
 ---
 
-## 3. Optional Power Query cleanup
+## 3. Power Query — load the 5 tables
+
+Two equivalent ways to get the data in. Pick one.
+
+### Option A — Navigator GUI (fastest)
+
+Follow the **Connect steps** in §1: Get Data → PostgreSQL → tick the 5 tables
+→ **Transform Data** (optional) → **Close & Apply**. Power BI generates the M
+for you.
+
+### Option B — paste the M script (reproducible)
+
+[`dax/power_query.m`](../dax/power_query.m) contains five self-contained
+queries (one per table) with explicit column types mirroring `sql/schema.sql`.
+For each table: **Home → New Query → Advanced Editor** → clear the template →
+paste the matching block → **Done**. Then **Home → Close & Apply**.
+
+> `dax/power_query.m` is a local convenience and is **gitignored** — the
+> reproducible source of truth is the database plus `dax/model.tmdl`.
+
+### Optional cleanup
 
 The warehouse is already clean (ETL handles decoding, age bands, VRU flags).
 The only thing worth doing in Power Query is **removing surrogate keys** you

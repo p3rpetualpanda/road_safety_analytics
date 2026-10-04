@@ -19,6 +19,7 @@ env/
 *.conn
 *.json
 !package.json
+dax/power_query.m
 
 # OS / editor
 .DS_Store
