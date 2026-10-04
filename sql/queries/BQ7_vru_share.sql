@@ -1,7 +1,7 @@
 -- ============================================================
 -- BQ7 — Vulnerable road user (VRU) share of serious casualties,
 --       and how it trends over time
--- VRU = pedestrian / cyclist / motorcyclist (vru_flag = TRUE).
+-- VRU = pedestrian / cyclist (vru_flag = TRUE). Motorcyclists excluded.
 -- Skills: CTE, conditional aggregation, window function (trend)
 -- ============================================================
 WITH yearly_vru AS (

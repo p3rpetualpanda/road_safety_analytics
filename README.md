@@ -111,7 +111,7 @@ against the live warehouse.
 | 0 | Environment & toolchain (PostgreSQL 17, Python, psql) | ✅ Complete |
 | 1 | Data acquisition & profiling (2025 single-year DfT extract) | ✅ Complete |
 | 2 | Star schema + idempotent ETL (3 facts, 2 dimensions) | ✅ Complete & verified |
-| 3 | SQL analytics — BQ1–BQ8 | 🔄 In progress (BQ1–BQ6 validated) |
+| 3 | SQL analytics — BQ1–BQ8 | ✅ Complete (all 8 validated) |
 | 4 | Power BI report (model, DAX, 4 pages) | ⏳ Not started |
 | 5 | Insights & recommendations | ⏳ Not started |
 | 6 | Documentation, testing & presentation | ⏳ Not started |
@@ -129,8 +129,8 @@ for sanity before it is marked validated.
 | BQ4 | Age/sex profile of casualties vs drivers | ✅ Validated (18 bands, no spurious zeros) |
 | BQ5 | Vehicle types & manoeuvres in serious/fatal | ✅ Validated (motorcycles dominate) |
 | BQ6 | Geographic high-risk clusters | ✅ Validated (urban clusters) |
-| BQ7 | Vulnerable road-user (ped/cyclist) share | ⏳ Pending |
-| BQ8 | Time-of-day / day-of-week severity patterns | ⏳ Pending |
+| BQ7 | Vulnerable road-user (ped/cyclist) share | ✅ Validated (78.9% VRU, ped-driven) |
+| BQ8 | Time-of-day / day-of-week severity patterns | ✅ Validated (all sums exact) |
 
 ### Notable data findings so far
 
@@ -143,6 +143,11 @@ for sanity before it is marked validated.
   comparable with no artificial zero rows.
 - **BQ5 signal:** motorcycles are disproportionately represented in
   serious/fatal casualties relative to their share of traffic.
+- **BQ7 signal:** 78.9% of serious/fatal casualties are VRUs (pedestrian 64.0%
+  + cyclist 14.9%). Serious/fatal records contain only Pedestrian, Motorist
+  and Cyclist — no passengers, motorcyclists or mopeds in the 2025 extract.
+- **BQ8 signal:** severity share peaks on weekends (Sat/Sun 24.3%) and in the
+  small hours (0–5am 28–30.3%), versus 8am (18.7%).
 
 Full detail lives in `docs/data_quality.md` and `docs/report.md`.
 
