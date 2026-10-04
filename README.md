@@ -31,6 +31,7 @@ road_safety_analytics/
 │   └── measures.dax          <- Power BI DAX measures (KPIs, time intelligence)
 └── docs/
     ├── data_quality.md       <- data-quality & governance log
+    ├── power_bi_guide.md     <- Phase 4 Power BI build guide (connection, model, pages)
     └── report.md             <- final written report (template)
 ```
 
@@ -77,13 +78,14 @@ psql $DB_URL -c "SELECT COUNT(*) AS casualties FROM fact_casualty;"
 ```
 
 ### 7. Power BI
+Full step-by-step build guide: **[`docs/power_bi_guide.md`](docs/power_bi_guide.md)**.
 1. Open Power BI Desktop → **Get Data** → **PostgreSQL database**
 2. Connect to `road_safety`, load `dim_date`, `dim_location`,
    `fact_accident`, `fact_casualty`, `fact_vehicle`
-3. In the model view, set relationships (fact → dim) as single-directional
+3. In the model view, set the 5 single-directional relationships (see guide §2)
 4. Mark `dim_date` as a **date table** (date column = `full_date`)
-5. Paste the measures from `dax/measures.dax` into the relevant tables
-6. Build the 4 report pages described in `docs/report.md`
+5. Add the measures from `dax/measures.dax`
+6. Build the 4 report pages described in the guide §5
 
 ## Business questions answered
 
@@ -100,11 +102,12 @@ read the result.
 
 ## Status
 
-_Last updated: 2026-10-03._
+_Last updated: 2026-10-04._
 
-The project is **mid-Phase 3 (SQL analytics)**. Phases 0–2 are complete and
-verified end-to-end; the analytical queries are being validated one by one
-against the live warehouse.
+The project is **in Phase 4 (Power BI)**. Phases 0–3 are complete and verified
+end-to-end; all 8 business questions are validated against the live warehouse.
+The DAX measures are verified against the schema and the Power BI build guide
+is written; the `.pbix` report itself is the remaining Phase 4 deliverable.
 
 | Phase | Scope | Status |
 |-------|-------|--------|
@@ -112,7 +115,7 @@ against the live warehouse.
 | 1 | Data acquisition & profiling (2025 single-year DfT extract) | ✅ Complete |
 | 2 | Star schema + idempotent ETL (3 facts, 2 dimensions) | ✅ Complete & verified |
 | 3 | SQL analytics — BQ1–BQ8 | ✅ Complete (all 8 validated) |
-| 4 | Power BI report (model, DAX, 4 pages) | ⏳ Not started |
+| 4 | Power BI report (model, DAX, 4 pages) | 🔄 In progress (DAX verified, guide written) |
 | 5 | Insights & recommendations | ⏳ Not started |
 | 6 | Documentation, testing & presentation | ⏳ Not started |
 

@@ -16,9 +16,6 @@
 Total Accidents =
 COUNTROWS ( fact_accident )
 
-Accidents =
-COUNTROWS ( fact_accident )
-
 // ------------------------------------------------------------
 // fact_casualty measures
 // ------------------------------------------------------------
@@ -70,7 +67,12 @@ DIVIDE (
 )
 
 // ------------------------------------------------------------
-// Time intelligence (requires a marked date table: dim_date)
+// Time intelligence
+// Requires: dim_date marked as the official date table in Power BI
+//   (Modeling > Date table > Mark as date table, using full_date).
+// Note: with the single-year 2025 extract, LY / YoY measures return
+//   blank/0 (no prior-year rows). This is expected, not a bug — the
+//   measures are in place for when a second year is loaded.
 // ------------------------------------------------------------
 Serious Fatal Casualties LY =
 CALCULATE (
