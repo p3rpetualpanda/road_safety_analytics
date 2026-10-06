@@ -50,8 +50,6 @@ log = logging.getLogger("etl")
 # Source: data.dft.gov.uk code tables. Codes not listed here are
 # rendered as "Unknown" so no row is silently dropped.
 # ------------------------------------------------------------------
-SEVERITY_LABELS = {1: "Fatal", 2: "Serious", 3: "Slight"}
-
 WEATHER_CONDITIONS = {
     1: "Fine no precipitation",
     2: "Fine with precipitation",

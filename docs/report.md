@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-This project transforms raw DfT road-safety data into a governed SQL data warehouse and an interactive Power BI report that answers real business questions for a road-safety authority. The analysis covers **125,113 casualties** across **2,492 districts** in the 2025 extract, with **30,159 serious or fatal** outcomes (24.1%).
+This project transforms raw DfT road-safety data into a governed SQL data warehouse and an interactive Power BI report that answers real business questions for a road-safety authority. The analysis covers **127,883 casualties** across **351 districts** in the 2025 extract, with **29,296 serious or fatal** outcomes (22.9%).
 
 **Headline finding:** Vulnerable road users (pedestrians and cyclists) account for **78.9% of all serious/fatal casualties**, with pedestrians alone representing **64.0%** of the total. This is the single most important insight for any road-safety authority: the majority of serious harm is happening to people without the protection of a vehicle.
 
@@ -56,10 +56,10 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 - **Question:** How do casualties and serious/fatal outcomes vary month-by-month in 2025?
 - **Method:** `sql/queries/BQ1_casualty_trend.sql` — groups `fact_casualty` by month via `dim_date`
 - **Finding:**
-  - Total casualties: **125,113**
-  - Total serious/fatal: **30,159** (24.1%)
-  - Monthly casualties range from **8,942** (February) to **11,263** (August)
-  - Serious/fatal share rises gently from **23.3%** (January) to **24.1%** (December)
+  - Total casualties: **127,883**
+  - Total serious/fatal: **29,296** (22.9%)
+  - Monthly casualties range from **8,954** (February) to **11,412** (November)
+  - Serious/fatal share rises gently from **21.4%** (January) to **23.6%** (December)
 - **Interpretation:** Casualty volumes are relatively stable month-to-month, with a slight upward trend through the year. The serious/fatal share increases gradually, suggesting that the proportion of severe outcomes is rising slightly as the year progresses. This could reflect seasonal factors (e.g., longer daylight hours in summer leading to more activity, but also more exposure).
 - **Evidence:** Power BI report page 1 (Trend & KPIs) — monthly line chart with serious/fatal share overlay
 
@@ -68,7 +68,7 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 - **Question:** Which districts have the highest rate of serious/fatal casualties?
 - **Method:** `sql/queries/BQ2_top_districts.sql` — groups by ONS district code, orders by serious/fatal percentage
 - **Finding:**
-  - **249 districts** with non-null district attribution
+  - **351 districts** with non-null district attribution (339 after the ≥50-accident reliability floor)
   - Top district (**S12000034**, Scotland): **123** accidents, **107** serious/fatal (**0.870** serious/fatal per accident)
   - Second (**S12000026**, Scotland): **74** accidents, **60** serious/fatal (**0.811**)
   - Third (**W06000002**, Wales): **105** accidents, **74** serious/fatal (**0.705**)
@@ -112,7 +112,7 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
   - **45+ age band:** Highest share of casualties — **38.4%** of female casualties (18,763) and **32.8%** of male casualties (25,437). Zero drivers by design (DfT only reports driver age up to 40-44).
   - **18-24 age band:** Highest share of drivers — **41.6%** of female drivers (19,588) and **38.8%** of male drivers (43,585), but only **13.5%** of female casualties and **16.8%** of male casualties.
   - **25-34 age band:** Highest share of male casualties — **20.0%** (15,558) and **18.5%** of female casualties (9,034).
-  - **Unknown sex:** **58.3%** of all casualties (800) and **88.0%** of all drivers (21,548) — a significant data-quality gap.
+  - **Unknown sex:** **1,372** casualties (1.07% of all) and **24,490** drivers — a data-quality gap. Within the unknown-sex group, the largest casualty age band is 58.3% (800) and the largest driver age band is 88.0% (21,548).
 - **Interpretation:** Older people (45+) are over-represented in casualties relative to their share of the driving population, suggesting they are more likely to be pedestrians or cyclists in accidents. Younger drivers (18-24) are over-represented in the driver population but under-represented in casualties, suggesting they are less likely to be seriously injured when involved in an accident. The high "Unknown" sex category is a data-quality issue that should be addressed in future extracts.
 - **Evidence:** Power BI report page 3 (Conditions & VRU) — age/sex profile chart
 
@@ -168,9 +168,9 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 - **Finding:**
   - **Weekends (Sat/Sun):** 24.3% serious/fatal rate — highest of any day (Sat 4,339 S/F, Sun 3,624 S/F)
   - **Small hours (0–5am):** 28.0–30.3% serious/fatal rate — highest of any hour (4am peak: 30.3%, 1am: 29.8%, 0am: 28.7%)
-  - **8am:** 18.7% serious/fatal rate — lowest of any hour, despite having the highest accident count (8,053)
+  - **8am:** 18.7% serious/fatal rate — lowest of any hour, despite having the highest casualty count (8,053)
   - **Midday (12pm–4pm):** 21.8–22.7% — near the overall average
-- **Interpretation:** Serious/fatal casualties are most likely to occur on weekends and in the small hours (0–5am), when lighting is poor, driver alertness is lower, and traffic is less predictable. The 8am trough is a dilution effect: it has the highest absolute accident count (8,053) but the lowest S/F proportion, meaning the morning commute produces many minor collisions but few serious/fatal ones. Interventions should target weekend and small-hours driving with improved lighting, speed enforcement, and fatigue-awareness campaigns.
+- **Interpretation:** Serious/fatal casualties are most likely to occur on weekends and in the small hours (0–5am), when lighting is poor, driver alertness is lower, and traffic is less predictable. The 8am trough is a dilution effect: it has the highest absolute casualty count (8,053) but the lowest S/F proportion, meaning the morning commute produces many minor collisions but few serious/fatal ones. Interventions should target weekend and small-hours driving with improved lighting, speed enforcement, and fatigue-awareness campaigns.
 - **Evidence:** Power BI report page 4 (Time & Patterns) — time-of-day and day-of-week heatmaps
 
 ---
@@ -199,7 +199,7 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 
 ## 7. Conclusion
 
-This project has successfully transformed raw DfT road-safety data into a governed SQL data warehouse and an interactive Power BI report that answers 8 business questions. The analysis covers 125,113 casualties across 2,492 districts, with 30,159 serious or fatal outcomes.
+This project has successfully transformed raw DfT road-safety data into a governed SQL data warehouse and an interactive Power BI report that answers 8 business questions. The analysis covers 127,883 casualties across 351 districts, with 29,296 serious or fatal outcomes.
 
 The most important finding is that **vulnerable road users (pedestrians and cyclists) account for 78.9% of all serious/fatal casualties**. This should be the primary focus of any road-safety strategy. The top 10% of districts by serious/fatal rate are 6x higher than the bottom 10%, suggesting that targeted interventions in high-risk areas could have a significant impact.
 

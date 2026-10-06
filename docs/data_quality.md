@@ -92,15 +92,19 @@ fix them silently.
 
 ## 5. Row-count reconciliation
 
-Fill in after each load (copy from the ETL log):
+Verified against the live warehouse on 2026-10-06 (after the final ETL run):
 
 | Table | Raw rows | Loaded rows | Dropped | Reason |
 |-------|----------|-------------|---------|--------|
-| accidents | | | | |
-| casualties | | | | |
-| vehicles | | | | |
-| dim_date | | | | |
-| dim_location | | | | |
+| accidents | 101,525 | 101,525 | 0 | — |
+| casualties | 127,883 | 127,883 | 0 | — |
+| vehicles | 183,948 | 183,948 | 0 | — |
+| dim_date | — | 365 | — | Derived (one row per day in 2025) |
+| dim_location | — | 2,492 | — | Derived (distinct ONS district codes) |
+
+The warehouse is a faithful 1:1 load of the raw CSVs — no rows were
+dropped by cleaning rules in the 2025 extract (all severity codes were
+valid, no orphaned casualties/vehicles, all dates parsed).
 
 ## 6. Change log
 
