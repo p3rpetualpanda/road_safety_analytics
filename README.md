@@ -103,12 +103,13 @@ read the result.
 
 ## Status
 
-_Last updated: 2026-10-04._
+_Last updated: 2026-10-06._
 
-The project is **in Phase 5 (Insights & recommendations)**. Phases 0–4 are
-complete and verified end-to-end: all 8 business questions are validated
-against the live warehouse, and the Power BI report (`road_safety_visuals.pbix`)
-is built with all 4 pages, the star schema, and 13 DAX measures.
+The project is **complete (Phases 0–6)**. All 8 business questions are
+validated against the live warehouse, the Power BI report
+(`road_safety_visuals.pbix`) is built with all 4 pages, the star schema, and
+13 DAX measures, and the final written report (`docs/report.md`) is finished
+with evidence-based insights and recommendations.
 
 | Phase | Scope | Status |
 |-------|-------|--------|
@@ -117,8 +118,8 @@ is built with all 4 pages, the star schema, and 13 DAX measures.
 | 2 | Star schema + idempotent ETL (3 facts, 2 dimensions) | ✅ Complete & verified |
 | 3 | SQL analytics — BQ1–BQ8 | ✅ Complete (all 8 validated) |
 | 4 | Power BI report (model, DAX, 4 pages) | ✅ Complete (report built, 13 measures) |
-| 5 | Insights & recommendations | ⏳ Not started |
-| 6 | Documentation, testing & presentation | ⏳ Not started |
+| 5 | Insights & recommendations | ✅ Complete (5 insights in `docs/report.md`) |
+| 6 | Documentation, testing & presentation | ✅ Complete (36 tests passing, report finalised) |
 
 ### Business-question validation (Phase 3)
 
