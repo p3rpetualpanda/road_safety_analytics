@@ -80,7 +80,8 @@ CREATE TABLE fact_casualty (
     age              INT,
     age_band         TEXT,
     sex              TEXT,
-    casualty_type    TEXT,
+    casualty_class   TEXT,                       -- role: Driver/rider, Passenger, Pedestrian
+    casualty_type    TEXT,                       -- road-user type (car occupant, cyclist, ...)
     severity         SMALLINT     NOT NULL CHECK (severity IN (1,2,3)),
     vru_flag         BOOLEAN      NOT NULL       -- vulnerable road user
 );

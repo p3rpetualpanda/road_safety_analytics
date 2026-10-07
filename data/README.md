@@ -18,19 +18,24 @@ The three tables are linked by `collision_index`
 ## Where to get the data
 
 The classic `data.gov.uk` STATS19 download URLs are **dead (404)**. The
-only live source is the DfT Road Safety Data page:
+live source is the DfT Road Safety Data page:
 
-    https://data.dft.gov.uk/road-accidents-safety-data/
+    https://www.gov.uk/government/statistics/road-safety-data
 
-From that page you can download:
+This project uses the **last-5-years** extract (2021–2025), downloaded
+directly from the DfT data service:
 
-- **Single year** (used here) — e.g. the 2025 `accidents.csv`,
-  `vehicles.csv`, `casualties.csv`.
-- **Last 5 years** — `...-collision-last-5-years.csv`, etc.
+- `https://data.dft.gov.uk/road-accidents-safety-data/dft-road-casualty-statistics-collision-last-5-years.csv`
+- `https://data.dft.gov.uk/road-accidents-safety-data/dft-road-casualty-statistics-vehicle-last-5-years.csv`
+- `https://data.dft.gov.uk/road-accidents-safety-data/dft-road-casualty-statistics-casualty-last-5-years.csv`
+
+Rename each file to `accidents.csv`, `vehicles.csv`, `casualties.csv`
+respectively and place them in this directory.
+
+Other available extracts (not used here):
+
+- **Single year** — e.g. the 2025 `...-collision-2025.csv`, etc.
 - **Complete (1979–latest)** — `...-collision-1979-latest-published-year.csv`, etc.
-
-Download the three single-year files and place them in this directory
-with the exact names above.
 
 > **Note:** the live source uses a **new column specification** that is
 > heavily *coded* (integers) where classic STATS19 was free text. The ETL

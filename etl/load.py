@@ -27,7 +27,7 @@ Cleaning rules (see docs/data_quality.md for the full log)
 - age / age_of_driver: -1, 0, 99, 999 treated as UNKNOWN -> NULL.
 - accident_time: "HH:MM" (or legacy "HHMM") text -> TIME; invalid -> NULL.
 - lat/long: out-of-range or blank -> NULL.
-- vru_flag: True when casualty_class is 1 (pedestrian) or 2 (cyclist).
+- vru_flag: True when casualty_type is 0 (pedestrian) or 1 (cyclist).
 - age_band: 5-year bands for reporting; "Unknown" for missing.
 """
 
@@ -60,6 +60,7 @@ WEATHER_CONDITIONS = {
     7: "Rain, showers, sleet, hail",
     8: "Thunder",
     9: "Unknown",
+    -1: "Unknown",
 }
 
 LIGHT_CONDITIONS = {
@@ -78,6 +79,7 @@ ROAD_SURFACE_CONDITIONS = {
     4: "Flooded",
     5: "Oil, gravel, or other obstruction",
     9: "Unknown",
+    -1: "Unknown",
 }
 
 FIRST_ROAD_CLASS = {
@@ -97,20 +99,45 @@ URBAN_RURAL = {
     -1: "Unknown",
 }
 
+# casualty_class = the casualty's ROLE in the collision (2024 STATS19 spec).
 CASUALTY_CLASS = {
-    1: "Pedestrian",
-    2: "Cyclist",
-    3: "Motorist",
-    4: "Passenger",
-    5: "Motorcyclist",
-    6: "Moped rider",
-    7: "Other",
+    1: "Driver or rider",
+    2: "Passenger",
+    3: "Pedestrian",
     -1: "Unknown",
 }
 
-# Casualty classes that count as a Vulnerable Road User (VRU):
-# pedestrians and cyclists. Motorists/passengers/motorcyclists are not.
-VRU_CLASSES = {1, 2}
+# casualty_type = the road-user type (2024 STATS19 spec).
+CASUALTY_TYPE = {
+    0: "Pedestrian",
+    1: "Cyclist",
+    2: "Motorcycle 50cc and under rider or passenger",
+    3: "Motorcycle 125cc and under rider or passenger",
+    4: "Motorcycle over 125cc and up to 500cc rider or passenger",
+    5: "Motorcycle over 500cc rider or passenger",
+    8: "Taxi / private hire car occupant",
+    9: "Car occupant",
+    10: "Minibus (8-16 passenger seats) occupant",
+    11: "Bus or coach occupant (17 or more passenger seats)",
+    16: "Horse rider",
+    17: "Agricultural vehicle occupant",
+    18: "Tram occupant",
+    19: "Van / goods vehicle (3.5t mgw or under) occupant",
+    20: "Goods vehicle (over 3.5t and under 7.5t) occupant",
+    21: "Goods vehicle (7.5t mgw and over) occupant",
+    22: "Mobility scooter rider",
+    23: "Electric motorcycle / personal powered transporter rider or passenger",
+    33: "Personal powered transporter (e-scooter)",
+    90: "Other vehicle occupant",
+    97: "Motorcycle - unknown cc rider or passenger",
+    98: "Goods vehicle (unknown weight) occupant",
+    99: "Unknown vehicle type (self reported)",
+    -1: "Unknown",
+}
+
+# Vulnerable Road User (VRU) = Pedestrian or Cyclist, identified by
+# casualty_type (road-user type), not by role.
+VRU_TYPES = {0, 1}
 
 SEX_OF_CASUALTY = {
     1: "Male",
@@ -120,93 +147,83 @@ SEX_OF_CASUALTY = {
 }
 
 VEHICLE_TYPE = {
-    1: "Car",
-    2: "Taxi/private hire vehicle",
-    3: "Bus or coach",
-    4: "LGV (van, pickup, 3W)",
-    5: "Motorcycle 50cc - 250cc",
-    6: "Motorcycle 251cc - 400cc",
-    7: "Motorcycle 401cc - 675cc",
-    8: "Motorcycle 676cc and above",
-    9: "Motorcycle (unknown size)",
-    10: "Moped",
-    11: "Agricultural tractor",
-    12: "LGV (other)",
-    13: "HGV",
-    14: "PSV (other)",
-    15: "Motorcycle (other)",
-    16: "Other vehicle",
-    17: "Unknown",
-    18: "Unknown",
-    19: "Unknown",
-    20: "Unknown",
-    21: "Unknown",
-    33: "Unknown",
-    90: "Unknown",
-    97: "Unknown",
-    98: "Unknown",
-    99: "Unknown",
-}
-
-VEHICLE_MANOEUVRE = {
-    1: "Overtaking",
-    2: "Turning left",
-    3: "Turning right",
-    4: "Turning circle",
-    5: "U-turn",
-    6: "Reversing",
-    7: "Accelerating",
-    8: "Slowing or stopping",
-    9: "Going straight",
-    10: "Lane change",
-    11: "Starting from stopped position",
-    12: "Turning left (other)",
-    13: "Turning right (other)",
-    14: "Overtaking (other)",
-    15: "Unknown",
-    16: "Unknown",
-    17: "Unknown",
-    18: "Unknown",
-    19: "Unknown",
-    99: "Unknown",
+    1: "Pedal cycle",
+    2: "Motorcycle 50cc and under",
+    3: "Motorcycle 125cc and under",
+    4: "Motorcycle over 125cc and up to 500cc",
+    5: "Motorcycle over 500cc",
+    8: "Taxi / private hire car",
+    9: "Car",
+    10: "Minibus (8-16 passenger seats)",
+    11: "Bus or coach (17 or more passenger seats)",
+    16: "Ridden horse",
+    17: "Agricultural vehicle",
+    18: "Tram",
+    19: "Van / goods vehicle (3.5t mgw or under)",
+    20: "Goods vehicle (over 3.5t and under 7.5t)",
+    21: "Goods vehicle (7.5t mgw and over)",
+    22: "Mobility scooter",
+    23: "Electric motorcycle",
+    33: "Personal powered transporter (e-scooter)",
+    90: "Other vehicle",
+    97: "Motorcycle - unknown cc",
+    98: "Goods vehicle - unknown weight",
+    99: "Unknown vehicle type (self reported)",
     -1: "Unknown",
 }
 
+VEHICLE_MANOEUVRE = {
+    1: "Reversing",
+    2: "Parked",
+    3: "Waiting to go ahead",
+    4: "Slowing or stopping",
+    5: "Moving off",
+    6: "U-turn",
+    7: "Turning left",
+    8: "Waiting to turn left",
+    9: "Turning right",
+    10: "Waiting to turn right",
+    11: "Changing lane to left",
+    12: "Changing lane to right",
+    13: "Overtaking moving vehicle on its offside",
+    14: "Overtaking stationary vehicle on its offside",
+    15: "Overtaking on nearside (passenger side nearest kerb)",
+    19: "Going ahead",
+    20: "Parking",
+    99: "Unknown (self reported)",
+    -1: "Unknown",
+}
+
+# DfT 2024 STATS19 propulsion_code (legacy fuel scheme). Code 2 "Heavy oil"
+# represents diesel in UK road-vehicle practice.
 PROPULSION_CODE = {
     1: "Petrol",
-    2: "Diesel",
+    2: "Heavy oil (diesel)",
     3: "Electric",
-    4: "LPG",
-    5: "Hybrid",
-    6: "Hydrogen",
-    7: "Other",
-    8: "Unknown",
-    9: "Unknown",
-    10: "Unknown",
-    12: "Unknown",
+    4: "Steam",
+    5: "Gas",
+    6: "Petrol / Gas (LPG)",
+    7: "Gas / Bi-fuel",
+    8: "Hybrid electric",
+    9: "Gas Diesel",
+    10: "New fuel technology",
+    11: "Fuel cells",
+    12: "Electric diesel",
     -1: "Unknown",
 }
 
 AGE_BAND_OF_DRIVER = {
-    1: "0-1",
-    2: "2-5",
-    3: "6-10",
-    4: "11-14",
-    5: "15-17",
-    6: "17-20",
-    7: "21-24",
-    8: "25-29",
-    9: "30-34",
-    10: "35-39",
-    11: "40-44",
-    12: "45-49",
-    13: "50-54",
-    14: "55-59",
-    15: "60-64",
-    16: "65-69",
-    17: "70-74",
-    18: "75-79",
-    19: "80+",
+    1: "0-5",
+    2: "6-10",
+    3: "11-15",
+    4: "16-20",
+    5: "21-25",
+    6: "26-35",
+    7: "36-45",
+    8: "46-55",
+    9: "56-65",
+    10: "66-75",
+    11: "Over 75",
     -1: "Unknown",
 }
 
@@ -281,10 +298,10 @@ def clean_coord(series: pd.Series, lo: float, hi: float) -> pd.Series:
     return s.where((s >= lo) & (s <= hi))
 
 
-def is_vru(casualty_class: pd.Series) -> pd.Series:
-    """Flag vulnerable road users: casualty_class 1 (pedestrian) or 2 (cyclist)."""
-    s = pd.to_numeric(casualty_class, errors="coerce").astype("Int64")
-    return s.isin(VRU_CLASSES)
+def is_vru(casualty_type: pd.Series) -> pd.Series:
+    """Flag vulnerable road users: casualty_type 0 (pedestrian) or 1 (cyclist)."""
+    s = pd.to_numeric(casualty_type, errors="coerce").astype("Int64")
+    return s.isin(VRU_TYPES)
 
 
 def decode_code(series: pd.Series, mapping: dict) -> pd.Series:
@@ -325,6 +342,48 @@ def bulk_insert(cur, table: str, rows: list[dict], columns: list[str]) -> int:
 # ------------------------------------------------------------------
 # Main ETL
 # ------------------------------------------------------------------
+def assert_collision_index_unique(
+    acc: pd.DataFrame, veh: pd.DataFrame, cas: pd.DataFrame
+) -> None:
+    """Pre-load integrity check on ``collision_index``.
+
+    ``collision_index`` is the natural key of the DfT extract and the basis
+    of our surrogate keys (``casualty_rec`` / ``vehicle_rec``). For a
+    multi-year load it must be globally unique within the accidents file,
+    and every vehicle/casualty row must reference an accident that exists.
+    Failing fast here avoids silent key collisions in the warehouse.
+    """
+    acc_idx = acc["collision_index"].astype(str).str.strip()
+    dupes = int(acc_idx.duplicated().sum())
+    if dupes:
+        sample = acc_idx[acc_idx.duplicated(keep="first")].head(5).tolist()
+        log.error(
+            "collision_index is NOT unique in accidents.csv: %d duplicate "
+            "row(s); sample=%s", dupes, sample,
+        )
+        sys.exit(1)
+
+    acc_set = set(acc_idx)
+    for name, df in (("vehicles.csv", veh), ("casualties.csv", cas)):
+        missing = int(
+            df["collision_index"].astype(str).str.strip().pipe(
+                lambda s: (~s.isin(acc_set)).sum()
+            )
+        )
+        if missing:
+            log.error(
+                "%s references %d collision_index value(s) absent from "
+                "accidents.csv", name, missing,
+            )
+            sys.exit(1)
+
+    log.info(
+        "collision_index integrity OK: %d unique accidents; all %d vehicle "
+        "and %d casualty rows reference a known accident",
+        len(acc_set), len(veh), len(cas),
+    )
+
+
 def run(data_dir: Path, db_url: str) -> None:
     accidents_path = data_dir / "accidents.csv"
     vehicles_path = data_dir / "vehicles.csv"
@@ -340,6 +399,8 @@ def run(data_dir: Path, db_url: str) -> None:
     cas = pd.read_csv(casualties_path, dtype=str)
     log.info("Raw rows -> accidents=%d vehicles=%d casualties=%d",
              len(acc), len(veh), len(cas))
+
+    assert_collision_index_unique(acc, veh, cas)
 
     # ---------------- dim_date ----------------
     # New DfT spec: 'date' column, DD/MM/YYYY format.
@@ -434,8 +495,12 @@ def run(data_dir: Path, db_url: str) -> None:
     cas["age"] = clean_age(cas.get("age_of_casualty"))
     cas["age_band"] = age_band(cas["age"])
     cas["sex"] = decode_code(cas.get("sex_of_casualty"), SEX_OF_CASUALTY)
-    cas["casualty_type"] = decode_code(cas.get("casualty_class"), CASUALTY_CLASS)
-    cas["vru_flag"] = is_vru(cas.get("casualty_class"))
+    cas["casualty_class"] = decode_code(cas.get("casualty_class"), CASUALTY_CLASS)
+    # vru_flag must be derived from the RAW numeric casualty_type (0=pedestrian,
+    # 1=cyclist) BEFORE it is decoded to text labels, otherwise to_numeric()
+    # coerces every label to NaN and the flag is always False.
+    cas["vru_flag"] = is_vru(cas.get("casualty_type"))
+    cas["casualty_type"] = decode_code(cas.get("casualty_type"), CASUALTY_TYPE)
 
     # Inherit date_key + location_key from the parent accident
     acc_lookup = acc.set_index("accident_index")[["date_key", "location_key"]].to_dict("index")
@@ -484,8 +549,8 @@ def run(data_dir: Path, db_url: str) -> None:
                      "num_vehicles", "num_casualties", "speed_limit"])
         bulk_insert(cur, "fact_casualty", df_to_rows(cas),
                     ["casualty_rec", "accident_index", "date_key", "location_key",
-                     "age", "age_band", "sex", "casualty_type", "severity",
-                     "vru_flag"])
+                     "age", "age_band", "sex", "casualty_class", "casualty_type",
+                     "severity", "vru_flag"])
         bulk_insert(cur, "fact_vehicle", df_to_rows(veh),
                     ["vehicle_rec", "accident_index", "vehicle_type", "manoeuvre",
                      "engine_size_cc", "propellant", "driver_age_band",

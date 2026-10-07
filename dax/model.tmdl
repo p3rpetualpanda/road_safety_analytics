@@ -202,6 +202,10 @@ table fact_casualty
     {
         type = string;
     }
+    column casualty_class
+    {
+        type = string;
+    }
     column casualty_type
     {
         type = string;

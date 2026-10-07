@@ -154,16 +154,18 @@ class TestCleanCoord:
 # is_vru
 # ------------------------------------------------------------------
 class TestIsVru:
+    """is_vru now keys off casualty_type: 0 (pedestrian) and 1 (cyclist) are VRU."""
+
     def test_flags_pedestrian_and_cyclist(self):
-        out = load.is_vru(pd.Series([1, 2]))
+        out = load.is_vru(pd.Series([0, 1]))
         assert out.tolist() == [True, True]
 
     def test_does_not_flag_motorist(self):
-        out = load.is_vru(pd.Series([3, 4, 5]))
+        out = load.is_vru(pd.Series([9, 19, 21]))
         assert out.tolist() == [False, False, False]
 
     def test_string_codes(self):
-        out = load.is_vru(pd.Series(["1", "2", "3"]))
+        out = load.is_vru(pd.Series(["0", "1", "9"]))
         assert out.tolist() == [True, True, False]
 
     def test_missing_is_false(self):

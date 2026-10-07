@@ -32,3 +32,9 @@ Thumbs.db
 *.log
 *.tmp
 *.bak
+
+# One-off scratch / verification scripts (underscore-prefixed)
+_*
+
+# Local backup of superseded single-year extract (re-downloadable from DfT)
+data/archive_2025/

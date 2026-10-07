@@ -70,9 +70,8 @@ DIVIDE (
 // Time intelligence
 // Requires: dim_date marked as the official date table in Power BI
 //   (Modeling > Date table > Mark as date table, using full_date).
-// Note: with the single-year 2025 extract, LY / YoY measures return
-//   blank/0 (no prior-year rows). This is expected, not a bug — the
-//   measures are in place for when a second year is loaded.
+// The 2021-2025 extract now spans five years, so the LY / YoY /
+// moving-average measures below are fully active.
 // ------------------------------------------------------------
 Serious Fatal Casualties LY =
 CALCULATE (
@@ -89,6 +88,45 @@ DIVIDE (
     [Serious Fatal Casualties LY],
     0
 )
+
+// 3-year rolling average of serious+fatal casualties (trailing 36 months).
+// Total over the trailing 3-year window divided by 3 = average annual total.
+// Useful for smoothing the annual trend line to expose the underlying
+// direction of travel without single-year noise.
+Serious Fatal 3yr Avg =
+VAR MaxDate = MAX ( dim_date[full_date] )
+VAR MinDate = DATEADD ( MaxDate, -2, YEAR )
+RETURN
+    DIVIDE (
+        CALCULATE (
+            [Serious Fatal Casualties],
+            DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate )
+        ),
+        3,
+        0
+    )
+
+// 12-month moving average of serious+fatal casualties (trailing 360 days).
+// Mirrors BQ9's serious_fatal_ma_12m for the Power BI trend visual.
+Serious Fatal MA 12m =
+CALCULATE (
+    [Serious Fatal Casualties],
+    DATESINPERIOD ( dim_date[full_date], MAX ( dim_date[full_date] ), -12, MONTH )
+)
+/ 12
+
+// Seasonality index: the month's serious+fatal count as a % of the
+// average month (100 = exactly average). Mirrors BQ10's seasonality_index.
+// Use with a month axis; values >100 are above-average months.
+Seasonality Index =
+VAR MonthCount = [Serious Fatal Casualties]
+VAR AvgMonth = DIVIDE (
+    CALCULATE ( [Serious Fatal Casualties], REMOVEFILTERS ( dim_date[month] ) ),
+    12,
+    0
+)
+RETURN
+    DIVIDE ( MonthCount, AvgMonth, 0 ) * 100
 
 // ------------------------------------------------------------
 // Top-N helper (use with a TOPN visual or a calculated table)

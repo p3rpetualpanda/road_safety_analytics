@@ -2,19 +2,19 @@
 
 > **Project:** Data Analyst Portfolio Project — Road Safety Analytics
 > **Author:** Jake (Third-Year CS Student)
-> **Date:** 2026-10-06
-> **Data Source:** DfT Road Safety Data (formerly STATS19), 2025 single-year extract
+> **Date:** 2026-10-07
+> **Data Source:** DfT Road Safety Data (formerly STATS19), 2021–2025 five-year extract
 > **Licence:** UK Open Government Licence (OGL v3.0)
 
 ---
 
 ## 1. Executive Summary
 
-This project transforms raw DfT road-safety data into a governed SQL data warehouse and an interactive Power BI report that answers real business questions for a road-safety authority. The analysis covers **127,883 casualties** across **351 districts** in the 2025 extract, with **29,296 serious or fatal** outcomes (22.9%).
+This project transforms raw DfT road-safety data into a governed SQL data warehouse and an interactive Power BI report that answers 11 business questions for a road-safety authority. The analysis covers **652,821 casualties** across **375 districts** over five years (2021–2025), with **137,044 serious or fatal** outcomes (21.0%).
 
-**Headline finding:** Vulnerable road users (pedestrians and cyclists) account for **78.9% of all serious/fatal casualties**, with pedestrians alone representing **64.0%** of the total. This is the single most important insight for any road-safety authority: the majority of serious harm is happening to people without the protection of a vehicle.
+**Headline finding:** Car occupants are the largest serious/fatal category (**37.7%**), followed by **pedestrians (21.2%)** and **cyclists (14.2%)**. Vulnerable road users (pedestrians + cyclists) account for **35.5%** of all serious/fatal casualties. Motorcyclists (all classes) add a further 19.6%, bringing the total for "vulnerable" road users to ~55%. The 2025 data shows a **6.0% year-on-year increase** in serious/fatal casualties (29,296 vs 27,642 in 2024), partly driven by improved coding of e-scooter and powered personal transporter casualties in the September 2026 DfT revision.
 
-**Top recommendation:** Prioritise pedestrian and cyclist safety interventions in the top 10% of districts by serious/fatal rate (led by district S12000034, Scotland, at 0.870 serious/fatal per accident), with a focus on the small hours (0–5am) and weekends, where severity share peaks at 28–30.3% versus 18.7% at 8am.
+**Top recommendation:** Prioritise pedestrian and cyclist safety interventions in the top 10% of districts by serious/fatal rate (led by district S12000034, Scotland, at 0.809 serious/fatal per accident over 5 years), with a focus on the small hours (0–5am) and weekends, where severity share peaks at 26.6–27.9% versus 17.0% at 8am.
 
 ---
 
@@ -24,12 +24,12 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 - **Problem:** Road-safety authorities need to understand where, when, and to whom serious harm is happening so they can allocate limited resources effectively. Raw DfT data is voluminous and unstructured; it needs to be cleaned, governed, and analysed to produce actionable insights.
 - **Objectives:**
   - **O1:** Build a governed SQL data warehouse from raw DfT CSVs
-  - **O2:** Answer 8 business questions (BQ1–BQ8) with validated SQL queries
+  - **O2:** Answer 11 business questions (BQ1–BQ11) with validated SQL queries
   - **O3:** Create an interactive Power BI report for self-service analysis
   - **O4:** Distil findings into evidence-based insights and recommendations
   - **O5:** Document the full pipeline for reproducibility
-- **Scope:** 2025 single-year DfT extract, UK-wide, all casualty types
-- **Out of scope:** Multi-year trend analysis, international comparison, predictive modelling
+- **Scope:** 2021–2025 five-year DfT extract, UK-wide, all casualty types
+- **Out of scope:** Exposure-adjusted rates (traffic volume / population), international comparison, predictive modelling
 
 ---
 
@@ -44,7 +44,7 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
   - `dim_location` — location dimension (district, road class, urban/rural, police force, lat/long)
 - **ETL:** Python (pandas + psycopg2), idempotent — see `etl/load.py`
 - **Analysis:** SQL (PostgreSQL 17.11) — see `sql/queries/`
-- **Visualisation:** Power BI Desktop — see `dax/measures.dax` (13 measures)
+- **Visualisation:** Power BI Desktop — see `dax/measures.dax` (16 measures)
 - **Data quality:** Refer to `docs/data_quality.md`
 
 ---
@@ -53,30 +53,30 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 
 ### BQ1 — Casualty trend over time
 
-- **Question:** How do casualties and serious/fatal outcomes vary month-by-month in 2025?
-- **Method:** `sql/queries/BQ1_casualty_trend.sql` — groups `fact_casualty` by month via `dim_date`
+- **Question:** How do casualties and serious/fatal outcomes vary month-by-month across 2021–2025?
+- **Method:** `sql/queries/BQ1_casualty_trend.sql` — groups `fact_casualty` by month via `dim_date`, with month-over-month change via `LAG()`
 - **Finding:**
-  - Total casualties: **127,883**
-  - Total serious/fatal: **29,296** (22.9%)
-  - Monthly casualties range from **8,954** (February) to **11,412** (November)
-  - Serious/fatal share rises gently from **21.4%** (January) to **23.6%** (December)
-- **Interpretation:** Casualty volumes are relatively stable month-to-month, with a slight upward trend through the year. The serious/fatal share increases gradually, suggesting that the proportion of severe outcomes is rising slightly as the year progresses. This could reflect seasonal factors (e.g., longer daylight hours in summer leading to more activity, but also more exposure).
+  - Total casualties (5 years): **652,821**
+  - Total serious/fatal (5 years): **137,044** (21.0%)
+  - Monthly casualties range from **~8,900** (February) to **~11,400** (November)
+  - Serious/fatal share is relatively stable across months (19.9%–22.3%)
+  - 60 rows returned (5 years × 12 months)
+- **Interpretation:** Casualty volumes show a clear seasonal pattern — February is consistently the lowest month, while November is the highest. The serious/fatal share is relatively stable across months, with a slight peak in summer months (June–August). The month-over-month change column reveals recurring seasonal dips in February and spikes in June/July.
 - **Evidence:** Power BI report page 1 (Trend & KPIs) — monthly line chart with serious/fatal share overlay
 
 ### BQ2 — Highest-risk districts / road classes
 
-- **Question:** Which districts have the highest rate of serious/fatal casualties?
-- **Method:** `sql/queries/BQ2_top_districts.sql` — groups by ONS district code, orders by serious/fatal percentage
+- **Question:** Which districts have the highest rate of serious/fatal casualties over 2021–2025?
+- **Method:** `sql/queries/BQ2_top_districts.sql` — groups by ONS district code, orders by serious/fatal per accident
 - **Finding:**
-  - **351 districts** with non-null district attribution (339 after the ≥50-accident reliability floor)
-  - Top district (**S12000034**, Scotland): **123** accidents, **107** serious/fatal (**0.870** serious/fatal per accident)
-  - Second (**S12000026**, Scotland): **74** accidents, **60** serious/fatal (**0.811**)
-  - Third (**W06000002**, Wales): **105** accidents, **74** serious/fatal (**0.705**)
-  - Fourth (**S12000017**, Scotland): **245** accidents, **156** serious/fatal (**0.637**)
-  - Fifth (**S12000033**, Scotland): **65** accidents, **41** serious/fatal (**0.631**)
-  - Bottom district (**E07000178**, England): **244** accidents, **32** serious/fatal (**0.131**)
-  - Range: **0.870** (top) to **0.131** (bottom) — a **6.6x** difference
-- **Interpretation:** There is significant variation in serious/fatal rates across districts. The top 5 districts are all in Scotland or Wales, suggesting that rural road networks with higher speed limits and fewer traffic calming measures may be a contributing factor. The 6.6x difference between the top and bottom districts suggests that local factors (road design, traffic volume, enforcement) are playing a significant role.
+  - **375 districts** with non-null district attribution (363 after the ≥50-accident reliability floor)
+  - Top district (**S12000034**, Scotland): **702** accidents, **568** serious/fatal (**0.809** serious/fatal per accident)
+  - Second (**S12000020**, Scotland): **198** accidents, **148** serious/fatal (**0.747**)
+  - Third (**S12000026**, Scotland): **464** accidents, **327** serious/fatal (**0.705**)
+  - Fourth (**S12000017**, Scotland): **1,190** accidents, **833** serious/fatal (**0.700**)
+  - Fifth (**S12000035**, Scotland): **455** accidents, **302** serious/fatal (**0.664**)
+  - Range: **0.809** (top) to **~0.13** (bottom) — a **~6x** difference
+- **Interpretation:** There is significant variation in serious/fatal rates across districts. The top 5 districts are all in Scotland, suggesting that rural road networks with higher speed limits and fewer traffic calming measures may be a contributing factor. The ~6x difference between the top and bottom districts suggests that local factors (road design, traffic volume, enforcement) are playing a significant role. The 5-year aggregation provides more stable rates than single-year figures.
 - **Evidence:** Power BI report page 2 (Districts & Risk) — bar chart of top 20 districts by serious/fatal rate
 
 ### BQ3 — Weather / lighting / road-surface effects
