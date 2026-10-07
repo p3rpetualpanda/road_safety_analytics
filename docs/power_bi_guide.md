@@ -14,13 +14,13 @@ Work top to bottom. Each step links to the section with the detail.
 
 | # | Step | Where |
 |---|---|---|
-| 1 | Confirm the `road_safety` DB is up and loaded (101,525 accidents / 127,883 casualties) | §1 |
+| 1 | Confirm the `road_safety` DB is up and loaded (513,801 accidents / 652,821 casualties) | §1 |
 | 2 | Connect: Get Data → PostgreSQL → `localhost` / `road_safety` / `postgres:postgres` | §1 |
 | 3 | Load the 5 tables (Navigator GUI **or** paste `dax/power_query.m`) | §3 |
 | 4 | **Close & Apply** — verify 5 tables appear in the Fields pane | §3 |
 | 5 | Wire the 5 single-directional relationships (or apply `dax/model.tmdl`) | §2 |
 | 6 | Mark `dim_date` as the date table on `full_date` | §2 |
-| 7 | Add the 13 DAX measures (or they come with the TMDL) | §4 |
+| 7 | Add the 16 DAX measures (or they come with the TMDL) | §4 |
 | 8 | Build the 4 report pages | §5 |
 | 9 | Add slicers / drill-down / tooltips + theme + "how to read" note | §6 |
 | 10 | Save as `road_safety_visuals.pbix` (repo root) and tick the checklist | §7 |
@@ -40,9 +40,9 @@ Work top to bottom. Each step links to the section with the detail.
 | Report-time dependency | none (data cached in `.pbix`) | DB must be running |
 | Visual performance | best (in-memory VertiPaqi) | per-visual round-trip to Postgres |
 | Reproducibility | `.pbix` is self-contained | needs `road_safety` DB present |
-| Data freshness | static 2025 extract — no live updates needed | only matters for live data |
+| Data freshness | static 2021–2025 extract — no live updates needed | only matters for live data |
 
-The warehouse is a **single-year (2025) static extract** rebuilt idempotently by
+The warehouse is a **five-year (2021–2025) static extract** rebuilt idempotently by
 `etl/load.py`. There is no live-refresh requirement, so Import is the correct
 call: fastest visuals, zero runtime dependency on the database, and the `.pbix`
 is fully portable.
@@ -115,9 +115,9 @@ This is the only fact-to-fact edge and it introduces no cycle.
 
 Without this, the `DATEADD` measures in `dax/measures.dax` will not resolve.
 
-> **Single-year caveat:** with only 2025 loaded, the LY / YoY measures return
-> blank/0 (no prior-year rows). This is expected, not a bug — the measures are
-> in place for when a second year is loaded.
+> **Time-intelligence note:** with five years loaded (2021–2025), the LY / YoY
+> measures return meaningful values for 2022–2025 (2021 has no prior year in
+> the extract, so its LY / YoY cells are blank — expected, not a bug).
 
 ---
 
@@ -184,6 +184,9 @@ definition one at a time). Summary of what's provided:
 | `Serious Per Accident by District` | serious/fatal ÷ accidents (ranking) |
 | `Vehicles Involved` | row count of `fact_vehicle` (vehicle_type / manoeuvre visuals) |
 | `Serious Fatal Accidents` | accidents where `severity IN {1,2}` (weather / lighting visuals) |
+| `Serious Fatal 3yr Avg` | 3-year rolling average of serious/fatal (trend smoothing) |
+| `Serious Fatal MA 12m` | 12-month moving average of serious/fatal (seasonal smoothing) |
+| `Seasonality Index` | month S/F ÷ monthly average S/F × 100 (BQ10) |
 
 > **Note:** `Total Accidents` and the old `Accidents` duplicate were merged —
 > only `Total Accidents` remains (it is the one referenced by other measures).
@@ -198,10 +201,10 @@ table the filter actually lives in:
 
 - **`vehicle_type` / `manoeuvre` live in `fact_vehicle`.** `Total Accidents`
   (`COUNTROWS(fact_accident)`) did **not** respond to them — every bar showed
-  the full 101,525. Fix: `Vehicles Involved = COUNTROWS(fact_vehicle)`.
+  the full 513,801. Fix: `Vehicles Involved = COUNTROWS(fact_vehicle)`.
 - **`weather` / `lighting` live in `fact_accident`.** `Serious Fatal
   Casualties` (`COUNTROWS(fact_casualty)`) did **not** respond to them — every
-  bar showed 29,296. Fix: `Serious Fatal Accidents`, which counts the
+  bar showed 137,044. Fix: `Serious Fatal Accidents`, which counts the
   serious/fatal *accidents* (the correct semantics, since weather/lighting are
   recorded per accident).
 
@@ -228,9 +231,11 @@ Narrative flow: **what happened → where → who/what → why (conditions)**.
 ### Page 1 — Executive overview
 - **KPI cards:** `Total Accidents`, `Total Casualties`,
   `Serious Fatal Casualties`, `Serious Fatal Share`, `VRU Share`.
+- **Bar chart:** `Serious Fatal Casualties` by `dim_date[year]`
+  (5-year annual trend).
 - **Bar chart:** `Serious Fatal Casualties` by `dim_date[month_name]`
-  (2025 monthly trend).
-- *Stakeholder question answered:* "How bad was 2025, and when did it peak?"
+  (seasonality — BQ10).
+- *Stakeholder question answered:* "How bad is it, and when does it peak?"
 
 ### Page 2 — Geographic / district analysis
 - **Bar chart:** `Serious Fatal Casualties` by `dim_location[district]`.
@@ -266,7 +271,7 @@ Narrative flow: **what happened → where → who/what → why (conditions)**.
 - **"How to read this report" note:** a one-paragraph text box on Page 1
   explaining the severity coding (1=fatal, 2=serious, 3=slight), the VRU
   definition (pedestrian + cyclist, motorcyclists excluded), and the
-  single-year scope.
+  five-year (2021–2025) scope.
 
 ---
 

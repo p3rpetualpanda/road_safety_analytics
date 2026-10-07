@@ -15,7 +15,7 @@
 
 - Data Analyst Portfolio Project
 - Author: Jake
-- Data: DfT Road Safety Data (formerly STATS19), 2025 extract
+- Data: DfT Road Safety Data (formerly STATS19), 2021–2025 five-year extract
 - Stack: PostgreSQL · Python (pandas) · SQL · Power BI
 
 > *Speaker note (30s):* "I'll walk you through how I took a raw government
@@ -67,7 +67,7 @@ questions with evidence.
  Raw CSVs  ──►  ETL (Python/pandas)  ──►  PostgreSQL star schema
  (DfT)          clean + decode            3 facts + 2 dims
                                                         │
-        Power BI report  ◄──  13 DAX measures  ◄──  8 SQL queries (BQ1–BQ8)
+        Power BI report  ◄──  16 DAX measures  ◄──  11 SQL queries (BQ1–BQ11)
         (4 pages)
 ```
 
@@ -86,13 +86,13 @@ questions with evidence.
 
 **Star schema** — 3 fact tables, 2 dimensions:
 
-| Table | Grain | Rows (2025) |
+| Table | Grain | Rows (2021–2025) |
 |-------|-------|-------------|
-| `fact_accident` | one row per accident | 101,525 |
-| `fact_casualty` | one row per casualty | 127,883 |
-| `fact_vehicle` | one row per vehicle | 183,948 |
-| `dim_date` | one row per day | 365 |
-| `dim_location` | one row per district | 2,492 |
+| `fact_accident` | one row per accident | 513,801 |
+| `fact_casualty` | one row per casualty | 652,821 |
+| `fact_vehicle` | one row per vehicle | 937,265 |
+| `dim_date` | one row per day | 1,826 |
+| `dim_location` | one row per district | 2,901 |
 
 - 5 single-directional relationships, `dim_date` marked as the date table
 - 8 B-tree indexes on the join/filter columns
@@ -126,35 +126,37 @@ This is where the real analyst work happened. Highlights:
 
 ## Slide 7 — Headline finding: who is hurt
 
-# Vulnerable road users are 78.9% of serious/fatal casualties
+# Vulnerable road users are 57.2% of serious/fatal casualties
 
-- **Pedestrians: 64.0%** of all serious/fatal casualties
-- **Cyclists: 14.9%**
-- Serious/fatal records contain *only* pedestrians, motorists, cyclists
+- **Car occupants: 37.7%** — the largest single group
+- **Pedestrians: 21.2%** · **Cyclists: 14.2%** · **Motorcyclists: 19.6%**
+- Broad vulnerable (ped + cyc + moto + moped + PPT): **57.2%** (78,443 of 137,044)
+- Narrow VRU (ped + cyc only, BQ7): **35.5%** (48,595)
 
-**The single most important insight:** the majority of serious harm is
-happening to people **without the protection of a vehicle**.
+**The single most important insight:** more than half of all serious harm
+is happening to people **without the full protection of a car**.
 
-> *Speaker note (60s):* Pause here. This is the number to remember. "Nearly 8
-> in 10 serious or fatal casualties are people on foot or on a bike. If you
-> only remember one thing from this talk, make it this."
+> *Speaker note (60s):* Pause here. This is the number to remember. "More
+> than half of all serious or fatal casualties are people on foot, on a bike,
+> or on a motorcycle. Car occupants are the largest single group, but the
+> vulnerable road-user cohort is the one we can most directly protect."
 
 ---
 
 ## Slide 8 — Finding: where
 
-**Districts vary 6.6× in serious/fatal rate** (per accident):
+**Districts vary ~5.8× in serious/fatal rate** (per accident):
 
-- Top: **S12000034** (Scotland) — 0.870 serious/fatal per accident
-- Bottom: **E07000178** (England) — 0.131
-- Top 5 districts are all in **Scotland or Wales**
+- Top: **S12000034** (Scotland) — 0.628 serious/fatal per accident (441/702)
+- Bottom: **EHEATHROW** — 0.109 (13/119)
+- Top 3 districts are all in **Scotland**
 
 **Geographic clusters** (0.1° grid):
 
-- Top 3 high-risk cells are all in the **London area** (~1,800 serious/fatal
-  combined) — urban density + traffic volume
+- Top 6 high-risk cells: **5 in the London area** + 1 in Leeds (~12,800
+  serious/fatal combined) — urban density + traffic volume
 
-> *Speaker note (50s):* "Two different stories: rural Scotland/Wales have the
+> *Speaker note (50s):* "Two different stories: rural Scotland has the
 > highest *rate* (speed, road design), while London has the highest *volume*
 > (density). Both matter, but they call for different interventions."
 
@@ -164,9 +166,9 @@ happening to people **without the protection of a vehicle**.
 
 **Weekends and the small hours are the most dangerous:**
 
-- **Weekends:** 24.3% serious/fatal rate — highest of any day
-- **0–5am:** 28–30.3% serious/fatal rate — highest of any hour (4am peak 30.3%)
-- **8am:** 18.7% — the *lowest*, despite a high casualty count (8,053, 6th of 24 hours)
+- **Weekends:** Sunday 23.1% serious/fatal rate — highest of any day (Saturday 22.3%)
+- **0–5am:** 26.6–27.9% serious/fatal rate — highest of any hour (3am peak 27.9%)
+- **8am:** 17.0% — the *lowest*, despite a high accident count (39,833, 6th of 24 hours)
 
 **Interpretation:** the 8am trough is a dilution effect — the morning
 commute produces many minor collisions but few serious ones.
@@ -181,15 +183,15 @@ commute produces many minor collisions but few serious ones.
 
 **Conditions that raise severity:**
 
-- **Darkness, no lights:** 30.6% serious/fatal (vs 22.0% daylight)
-- **Rain/showers/sleet:** 28.5% · **Fog/mist:** 26.9% (vs 23.3% fine)
-- **Oil/gravel/obstruction:** 26.3% · **Snow/ice:** 25.1%
+- **Darkness, no lights:** 29.2% serious/fatal (vs 20.0% daylight)
+- **Fog/mist:** 25.3% · **Rain:** 24.2% (vs 21.4% fine)
+- **Wet road:** 21.8% (vs 21.1% dry)
 
 **Vehicles & manoeuvres:**
 
-- **Motorcycles (50–250cc)** hold **6 of the top 10** high-risk
+- **Motorcycles (over 500cc)** hold **6 of the top 8** high-risk
   vehicle/manoeuvre combinations
-- Highest: motorcycle **turning right** — 66.4% serious/fatal
+- Highest: motorcycle **U-turn** — 62.5% serious/fatal; overtaking offside 62.2%
 
 > *Speaker note (50s):* "Reduced visibility and poor surfaces consistently
 > push severity up. And motorcycles are dramatically over-represented in
@@ -201,8 +203,8 @@ commute produces many minor collisions but few serious ones.
 
 | # | Insight (evidence) | Recommendation | Priority |
 |---|--------------------|----------------|----------|
-| 1 | VRUs = 78.9% of serious/fatal (BQ7) | Pedestrian/cyclist interventions: crossings, cycle lanes, speed limits | **High** |
-| 2 | Top districts 6.6× higher rate (BQ2) | Targeted audits of top 10% of districts | **High** |
+| 1 | Vulnerable road users = 57.2% of S/F (broad; BQ7 narrow = 35.5%) | Pedestrian/cyclist/motorcycle interventions: crossings, cycle lanes, speed limits | **High** |
+| 2 | Top districts ~5.8× higher rate (BQ2) | Targeted audits of top 10% of districts | **High** |
 | 3 | Weekends + 0–5am peak (BQ8) | Lighting, enforcement, fatigue campaigns | Medium |
 | 4 | Rain/fog raise severity (BQ3) | Drainage, signage, weather speed limits | Medium |
 | 5 | Motorcycles over-represented (BQ5) | Rider training, protective gear, conflict-point design | Medium |
@@ -222,7 +224,7 @@ commute produces many minor collisions but few serious ones.
 - One inefficiency found: a `GROUP BY` sort **spilling to disk**
   (`external merge, 6.5 MB`) — fixed by raising `work_mem` → in-memory
   quicksort, 832 ms → 763 ms
-- All 8 queries run in **29 ms – 832 ms** — well within interactive limits
+- All 11 queries run in **29 ms – 832 ms** — well within interactive limits
 
 **Testing:** 36 pytest cases guard the cleaning rules (age banding, severity,
 VRU flags, coded-field decoding).
@@ -235,7 +237,7 @@ VRU flags, coded-field decoding).
 
 ## Slide 13 — Limitations
 
-- **Single year** (2025) — no multi-year trend or seasonality beyond 12 months
+- **Five-year extract** (2021–2025) — no exposure data, no causal inference
 - **No exposure data** — rates aren't adjusted for traffic volume / population
 - **Descriptive, not causal** — weather↔severity is correlation, not causation
 - **Field sparsity** — some "Unknown" buckets limit precision
@@ -250,8 +252,8 @@ VRU flags, coded-field decoding).
 
 ## Slide 14 — Next steps
 
-1. **Multi-year** analysis — trends & seasonality
-2. **Exposure adjustment** — traffic volume / population denominators
+1. **Exposure adjustment** — traffic volume / population denominators
+2. **IMD inequality** — link deprivation to serious/fatal rates
 3. **Predictive modelling** — flag high-risk locations & time windows
 4. **Cost-benefit analysis** of the recommended interventions
 
@@ -265,9 +267,9 @@ VRU flags, coded-field decoding).
 **In one line:** I turned a raw, coded, quirky government CSV dump into a
 governed warehouse and a Power BI report that shows a road-safety authority
 **where, when, and to whom** serious harm is happening — and that
-**vulnerable road users are 78.9% of serious/fatal casualties**.
+**vulnerable road users are 57.2% of serious/fatal casualties**.
 
-- 8 business questions answered with validated SQL
+- 11 business questions answered with validated SQL
 - 36 tests, EXPLAIN-verified performance, full data-quality log
 - Reproducible end-to-end from a clean state in < 30 minutes
 

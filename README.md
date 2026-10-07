@@ -24,7 +24,7 @@ road_safety_analytics/
 ├── data/                     <- raw DfT CSVs (gitignored, you add them)
 ├── sql/
 │   ├── schema.sql            <- star schema DDL (3 facts + 2 dimensions)
-│   └── queries/              <- one file per business question (BQ1-BQ8)
+│   └── queries/              <- one file per business question (BQ1-BQ11)
 ├── etl/
 │   └── load.py               <- idempotent ETL: CSV -> clean -> warehouse
 ├── dax/
@@ -60,8 +60,10 @@ psql $DB_URL -f sql/schema.sql
 ```
 
 ### 3. Add the raw data
-Download `accidents.csv`, `vehicles.csv`, `casualties.csv` from
-`https://data.dft.gov.uk/road-accidents-safety-data/` into `data/`.
+Download the 5-year extracts from DfT into `data/`:
+- `https://data.dft.gov.uk/road-accidents-safety-data/dft-road-casualty-statistics-collision-last-5-years.csv` → `accidents.csv`
+- `https://data.dft.gov.uk/road-accidents-safety-data/dft-road-casualty-statistics-vehicle-last-5-years.csv` → `vehicles.csv`
+- `https://data.dft.gov.uk/road-accidents-safety-data/dft-road-casualty-statistics-casualty-last-5-years.csv` → `casualties.csv`
 (See `data/README.md` for details.)
 
 ### 4. Install Python deps
@@ -92,7 +94,7 @@ Full step-by-step build guide: **[`docs/power_bi_guide.md`](docs/power_bi_guide.
 
 ## Business questions answered
 
-See `sql/queries/` — one file per question (BQ1–BQ8). Each file is
+See `sql/queries/` — one file per question (BQ1–BQ11). Each file is
 self-documenting: the header states the question, assumptions, and how to
 read the result.
 
@@ -107,12 +109,12 @@ read the result.
 
 ## Status
 
-_Last updated: 2026-10-06._
+_Last updated: 2026-10-07._
 
-The project is **complete (Phases 0–6)**. All 8 business questions are
-validated against the live warehouse, the Power BI report
+The project is **complete (Phases 0–6 + Phase A expansion)**. All 11 business
+questions are validated against the live warehouse, the Power BI report
 (`road_safety_visuals.pbix`) is built with all 4 pages, the star schema, and
-13 DAX measures, the final written report (`docs/report.md`) is finished
+16 DAX measures, the final written report (`docs/report.md`) is finished
 with evidence-based insights and recommendations, query performance is
 documented with `EXPLAIN ANALYZE` evidence (`docs/performance.md`), and the
 10-15 minute presentation deck is ready (`docs/presentation.md`).
@@ -120,12 +122,13 @@ documented with `EXPLAIN ANALYZE` evidence (`docs/performance.md`), and the
 | Phase | Scope | Status |
 |-------|-------|--------|
 | 0 | Environment & toolchain (PostgreSQL 17, Python, psql) | ✅ Complete |
-| 1 | Data acquisition & profiling (2025 single-year DfT extract) | ✅ Complete |
+| 1 | Data acquisition & profiling (2021–2025 five-year DfT extract) | ✅ Complete |
 | 2 | Star schema + idempotent ETL (3 facts, 2 dimensions) | ✅ Complete & verified |
-| 3 | SQL analytics — BQ1–BQ8 | ✅ Complete (all 8 validated) |
-| 4 | Power BI report (model, DAX, 4 pages) | ✅ Complete (report built, 13 measures) |
+| 3 | SQL analytics — BQ1–BQ11 | ✅ Complete (all 11 validated) |
+| 4 | Power BI report (model, DAX, 4 pages) | ✅ Complete (report built, 16 measures) |
 | 5 | Insights & recommendations | ✅ Complete (5 insights in `docs/report.md`) |
 | 6 | Documentation, testing & presentation | ✅ Complete (36 tests passing, report finalised, `docs/performance.md`, `docs/presentation.md`) |
+| A | Multi-year expansion (2021–2025) | ✅ Complete (5-year ETL, BQ9–BQ11, 3 new DAX measures) |
 
 ### Business-question validation (Phase 3)
 
@@ -134,14 +137,17 @@ for sanity before it is marked validated.
 
 | Query | Question | Status |
 |-------|----------|--------|
-| BQ1 | Casualty trend over time | ✅ Validated |
-| BQ2 | Highest-risk districts / road classes | ✅ Validated (351 real districts) |
+| BQ1 | Casualty trend over time | ✅ Validated (5-year monthly trend) |
+| BQ2 | Highest-risk districts / road classes | ✅ Validated (375 real districts) |
 | BQ3 | Casualties by weather / lighting / surface | ✅ Validated (all sums exact) |
 | BQ4 | Age/sex profile of casualties vs drivers | ✅ Validated (18 bands, no spurious zeros) |
 | BQ5 | Vehicle types & manoeuvres in serious/fatal | ✅ Validated (motorcycles dominate) |
 | BQ6 | Geographic high-risk clusters | ✅ Validated (urban clusters) |
-| BQ7 | Vulnerable road-user (ped/cyclist) share | ✅ Validated (78.9% VRU, ped-driven) |
+| BQ7 | Vulnerable road-user (ped/cyclist) share | ✅ Validated (35.5% VRU, ~57.2% broad vulnerable) |
 | BQ8 | Time-of-day / day-of-week severity patterns | ✅ Validated (all sums exact) |
+| BQ9 | Annual trend & year-on-year change | ✅ Validated (S/F share rising 19.4%→22.9%) |
+| BQ10 | Seasonality index | ✅ Validated (Feb lowest 81.2, Jun highest 109.0) |
+| BQ11 | Inflection points & anomalies | ✅ Validated (recurring Feb dips, Jun/Jul spikes) |
 
 ### Notable data findings so far
 
@@ -154,11 +160,14 @@ for sanity before it is marked validated.
   comparable with no artificial zero rows.
 - **BQ5 signal:** motorcycles are disproportionately represented in
   serious/fatal casualties relative to their share of traffic.
-- **BQ7 signal:** 78.9% of serious/fatal casualties are VRUs (pedestrian 64.0%
-  + cyclist 14.9%). Serious/fatal records contain only Pedestrian, Motorist
-  and Cyclist — no passengers, motorcyclists or mopeds in the 2025 extract.
-- **BQ8 signal:** severity share peaks on weekends (Sat/Sun 24.3%) and in the
-  small hours (0–5am 28–30.3%), versus 8am (18.7%).
+- **BQ7 signal:** ~57.2% of serious/fatal casualties are vulnerable road users
+  (car occupants 37.7% + VRUs 35.5% + motorcyclists 19.6%). The VRU share is
+  stable across the five years (34.6–36.0%).
+- **BQ8 signal:** severity share peaks on Sundays (23.1%) and in the small
+  hours (3am 27.9%), versus 8am (17.0%).
+- **BQ9 signal:** serious/fatal share is rising every year — from 19.4% in 2021
+  to 22.9% in 2025, with a +6.0% YoY jump in 2025 (partly driven by the
+  September 2026 DfT coding revision for e-scooters/PPTs).
 
 Full detail lives in `docs/data_quality.md` and `docs/report.md`.
 
