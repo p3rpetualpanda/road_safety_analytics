@@ -32,8 +32,10 @@ road_safety_analytics/
 │   └── model.tmdl            <- full data model in TMDL (tables, relationships, measures)
 └── docs/
     ├── data_quality.md       <- data-quality & governance log
+    ├── performance.md        <- EXPLAIN ANALYZE evidence (BQ1, BQ2) + index rationale
     ├── power_bi_guide.md     <- Phase 4 Power BI build guide (connection, model, pages)
-    └── report.md             <- final written report (template)
+    ├── presentation.md       <- 10-15 min presentation deck (markdown slides)
+    └── report.md             <- final written report
 ```
 
 ## Prerequisites
@@ -100,6 +102,8 @@ read the result.
   `https://data.dft.gov.uk/road-accidents-safety-data/`
 - **Licence:** UK Open Government Licence (OGL v3.0) — cite in your report
 - **Data-quality log:** `docs/data_quality.md`
+- **Performance analysis:** `docs/performance.md` (EXPLAIN evidence)
+- **Presentation:** `docs/presentation.md` (10-15 min deck)
 
 ## Status
 
@@ -108,8 +112,10 @@ _Last updated: 2026-10-06._
 The project is **complete (Phases 0–6)**. All 8 business questions are
 validated against the live warehouse, the Power BI report
 (`road_safety_visuals.pbix`) is built with all 4 pages, the star schema, and
-13 DAX measures, and the final written report (`docs/report.md`) is finished
-with evidence-based insights and recommendations.
+13 DAX measures, the final written report (`docs/report.md`) is finished
+with evidence-based insights and recommendations, query performance is
+documented with `EXPLAIN ANALYZE` evidence (`docs/performance.md`), and the
+10-15 minute presentation deck is ready (`docs/presentation.md`).
 
 | Phase | Scope | Status |
 |-------|-------|--------|
@@ -119,7 +125,7 @@ with evidence-based insights and recommendations.
 | 3 | SQL analytics — BQ1–BQ8 | ✅ Complete (all 8 validated) |
 | 4 | Power BI report (model, DAX, 4 pages) | ✅ Complete (report built, 13 measures) |
 | 5 | Insights & recommendations | ✅ Complete (5 insights in `docs/report.md`) |
-| 6 | Documentation, testing & presentation | ✅ Complete (36 tests passing, report finalised) |
+| 6 | Documentation, testing & presentation | ✅ Complete (36 tests passing, report finalised, `docs/performance.md`, `docs/presentation.md`) |
 
 ### Business-question validation (Phase 3)
 
