@@ -39,7 +39,7 @@ road_safety_analytics/
 └── docs/
     ├── data_quality.md       <- data-quality & governance log
     ├── performance.md        <- EXPLAIN ANALYZE evidence (BQ1, BQ2) + index rationale
-    ├── power_bi_guide.md     <- Phase 4 Power BI build guide (connection, model, pages)
+    ├── power_bi_guide.md     <- Phase 4 Power BI build guide (local-only, not tracked)
     ├── presentation.md       <- 10-15 min presentation deck (markdown slides)
     └── report.md             <- final written report
 ```
@@ -101,7 +101,7 @@ Full step-by-step build guide: **[`docs/power_bi_guide.md`](docs/power_bi_guide.
    `fact_accident`, `fact_casualty`, `fact_vehicle`,
    `exposure_vehicle_km`, `exposure_licensed_vehicles`,
    `ras0201_numbers`, `ras0201_rates`, `ras4001_cost_per_casualty`, `ras4001_total_cost`
-3. In the model view, set the 5 single-directional relationships (see guide §2)
+3. In the model view, set the 8 single-directional relationships (see guide §2)
 4. Mark `dim_date` as a **date table** (date column = `full_date`)
 5. Add the measures from `dax/measures.dax` (21 measures)
 6. Build the 5 report pages described in the guide §5

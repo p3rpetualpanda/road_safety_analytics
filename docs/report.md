@@ -241,7 +241,7 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 ### BQ14 — Serious/fatal rate per 100M vehicle-km by local authority
 
 - **Question:** Which local authorities have the highest serious/fatal rate per unit of traffic exposure?
-- **Method:** `sql/queries/BQ14_sf_per_100m_km_by_la.sql` — joins `fact_casualty` (S/F by district) with `exposure_vehicle_km` (TRA8904 LA-level km), calculates S/F per 100M vehicle-km
+- **Method:** `sql/queries/BQ14_sf_per_100m_km_by_district.sql` — joins `fact_casualty` (S/F by district) with `exposure_vehicle_km` (TRA8904 LA-level km), calculates S/F per 100M vehicle-km
 - **Finding:**
   - **186 local authorities** with both casualty and exposure data
   - Top districts are predominantly **Inner London boroughs** (E09 prefix), with rates of **17–45** per 100M km

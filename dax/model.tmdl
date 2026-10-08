@@ -5,8 +5,8 @@
 // controllable definition of the Phase 4 data model.
 //
 // Contains:
-//   - 5 tables (2 dimensions + 3 facts)
-//   - 5 single-directional relationships (acyclic star schema)
+//   - 11 tables (2 dimensions + 3 facts + 6 exposure)
+//   - 8 single-directional relationships (acyclic star schema)
 //   - dim_date marked as the official date table (full_date)
 //   - all DAX measures (mirrors dax/measures.dax)
 //
@@ -279,6 +279,201 @@ table fact_vehicle
 }
 
 // ------------------------------------------------------------
+// Phase B — exposure tables (DfT national statistics)
+// Loaded by etl/load_exposure.py. Three of these relate to
+// dim_date[year]; the rest are disconnected and filtered via
+// DAX (see measures below).
+// ------------------------------------------------------------
+table exposure_vehicle_km
+{
+    column year
+    {
+        type = number;
+    }
+    column geo_code
+    {
+        type = string;
+    }
+    column geo_name
+    {
+        type = string;
+    }
+    column vehicle_type
+    {
+        type = string;
+    }
+    column road_class
+    {
+        type = string;
+    }
+    column vehicle_km_million
+    {
+        type = number;
+    }
+    column source_table
+    {
+        type = string;
+    }
+
+    relationship to_dim_date
+    {
+        fromColumn = exposure_vehicle_km[year];
+        toColumn = dim_date[year];
+    }
+}
+
+table exposure_licensed_vehicles
+{
+    column year
+    {
+        type = number;
+    }
+    column geo_name
+    {
+        type = string;
+    }
+    column vehicle_type
+    {
+        type = string;
+    }
+    column vehicles_thousand
+    {
+        type = number;
+    }
+    column source_table
+    {
+        type = string;
+    }
+
+    relationship to_dim_date
+    {
+        fromColumn = exposure_licensed_vehicles[year];
+        toColumn = dim_date[year];
+    }
+}
+
+// Disconnected — no dim_date relationship (filtered via DAX).
+table ras0201_numbers
+{
+    column year
+    {
+        type = number;
+    }
+    column road_user_type
+    {
+        type = string;
+    }
+    column severity
+    {
+        type = string;
+    }
+    column count
+    {
+        type = number;
+    }
+}
+
+table ras0201_rates
+{
+    column year
+    {
+        type = number;
+    }
+    column road_user_type
+    {
+        type = string;
+    }
+    column severity
+    {
+        type = string;
+    }
+    column rate_unit
+    {
+        type = string;
+    }
+    column rate_value
+    {
+        type = number;
+    }
+
+    relationship to_dim_date
+    {
+        fromColumn = ras0201_rates[year];
+        toColumn = dim_date[year];
+    }
+}
+
+// Disconnected — uses collision_year / price_year, not dim_date.
+table ras4001_cost_per_casualty
+{
+    column collision_year
+    {
+        type = number;
+    }
+    column price_year
+    {
+        type = number;
+    }
+    column severity
+    {
+        type = string;
+    }
+    column cost_per_casualty
+    {
+        type = number;
+    }
+    column cost_per_collision
+    {
+        type = number;
+    }
+}
+
+// Disconnected — uses collision_year / price_year, not dim_date.
+table ras4001_total_cost
+{
+    column collision_year
+    {
+        type = number;
+    }
+    column price_year
+    {
+        type = number;
+    }
+    column severity
+    {
+        type = string;
+    }
+    column lost_output_mil
+    {
+        type = number;
+    }
+    column medical_mil
+    {
+        type = number;
+    }
+    column human_costs_mil
+    {
+        type = number;
+    }
+    column police_mil
+    {
+        type = number;
+    }
+    column insurance_mil
+    {
+        type = number;
+    }
+    column property_damage_mil
+    {
+        type = number;
+    }
+    column total_mil
+    {
+        type = number;
+    }
+}
+
+// ------------------------------------------------------------
 // Measures (mirrors dax/measures.dax)
 // ------------------------------------------------------------
 measure Total Accidents
@@ -334,9 +529,62 @@ measure Serious Fatal YoY %
     expression = DIVIDE ( [Serious Fatal YoY Change], [Serious Fatal Casualties LY], 0 );
 }
 
+measure Serious Fatal 3yr Avg
+{
+    expression = VAR MaxDate = MAX ( dim_date[full_date] ) VAR MinDate = DATEADD ( MaxDate, -2, YEAR ) RETURN DIVIDE ( CALCULATE ( [Serious Fatal Casualties], DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate ) ), 3, 0 );
+}
+
+measure Serious Fatal MA 12m
+{
+    expression = CALCULATE ( [Serious Fatal Casualties], DATESINPERIOD ( dim_date[full_date], MAX ( dim_date[full_date] ), -12, MONTH ) ) / 12;
+}
+
+measure Seasonality Index
+{
+    expression = VAR MonthCount = [Serious Fatal Casualties] VAR AvgMonth = DIVIDE ( CALCULATE ( [Serious Fatal Casualties], REMOVEFILTERS ( dim_date[month] ) ), 12, 0 ) RETURN DIVIDE ( MonthCount, AvgMonth, 0 ) * 100;
+}
+
 measure Serious Per Accident by District
 {
     expression = DIVIDE ( [Serious Fatal Casualties], [Total Accidents], 0 );
+}
+
+measure Vehicles Involved
+{
+    expression = COUNTROWS ( fact_vehicle );
+}
+
+measure Serious Fatal Accidents
+{
+    expression = CALCULATE ( COUNTROWS ( fact_accident ), fact_accident[severity] IN { 1, 2 } );
+}
+
+// ------------------------------------------------------------
+// Phase B — exposure-adjusted rates (mirrors dax/measures.dax)
+// ------------------------------------------------------------
+measure SF Per 100M Vehicle KM
+{
+    expression = VAR SF = [Serious Fatal Casualties] VAR KM = CALCULATE ( SUM ( exposure_vehicle_km[vehicle_km_million] ), exposure_vehicle_km[source_table] = "TRA0202", exposure_vehicle_km[geo_code] = "GB", exposure_vehicle_km[road_class] = "All Roads" ) RETURN DIVIDE ( SF * 100, KM, 0 );
+}
+
+measure SF Per 100M Vehicle KM by Road Class
+{
+    expression = VAR SF = [Serious Fatal Casualties] VAR KM = CALCULATE ( SUM ( exposure_vehicle_km[vehicle_km_million] ), exposure_vehicle_km[source_table] = "TRA0202", exposure_vehicle_km[geo_code] = "GB" ) RETURN DIVIDE ( SF * 100, KM, 0 );
+}
+
+measure SF Per 100K Vehicles
+{
+    expression = VAR SF = [Serious Fatal Casualties] VAR VEH = CALCULATE ( SUM ( exposure_licensed_vehicles[vehicles_thousand] ), exposure_licensed_vehicles[geo_name] = "United Kingdom", exposure_licensed_vehicles[vehicle_type] = "Total" ) RETURN DIVIDE ( SF * 100000, VEH * 1000, 0 );
+}
+
+measure DfT Published KSI Rate
+{
+    expression = CALCULATE ( MAX ( ras0201_rates[rate_value] ), ras0201_rates[road_user_type] = "All road users", ras0201_rates[severity] = "KSI (adjusted)" );
+}
+
+measure DfT Published Fatal Rate
+{
+    expression = CALCULATE ( MAX ( ras0201_rates[rate_value] ), ras0201_rates[road_user_type] = "All road users", ras0201_rates[severity] = "Killed" );
 }
 
 annotation PBI_ProTooling = ["TMDL-Extension"]

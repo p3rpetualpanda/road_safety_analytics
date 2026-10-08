@@ -95,9 +95,9 @@ questions with evidence (11 Phase A + 3 Phase B exposure-adjusted).
 | `dim_date` | one row per day | 1,826 |
 | `dim_location` | one row per district | 2,901 |
 
-- 5 single-directional relationships (exposure tables disconnected), `dim_date` marked as the date table
-- 8 B-tree indexes on the join/filter columns
-- **Phase B:** 6 additional exposure tables (`exposure_vehicle_km`, `exposure_licensed_vehicles`, `ras0201_numbers`, `ras0201_rates`, `ras4001_cost_per_casualty`, `ras4001_total_cost`) loaded from 10 DfT ODS files (TRA, VEH, RAS) — disconnected, joined via DAX
+- 8 single-directional relationships (3 exposure tables relate to `dim_date[year]`; 3 are disconnected), `dim_date` marked as the date table
+- 9 B-tree indexes on the join/filter columns
+- **Phase B:** 6 additional exposure tables (`exposure_vehicle_km`, `exposure_licensed_vehicles`, `ras0201_numbers`, `ras0201_rates`, `ras4001_cost_per_casualty`, `ras4001_total_cost`) loaded from 10 DfT ODS files (TRA, VEH, RAS) — 3 relate to `dim_date[year]`, 3 are disconnected and joined via DAX
 
 > *Speaker note (40s):* "A star schema is the classic choice for this kind of
 > 'aggregate a fact, slice by a dimension' analysis. The surrogate keys are

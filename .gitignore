@@ -22,6 +22,9 @@ env/
 !package.json
 dax/power_query.m
 
+# Personal build guide (local-only, not for the repo)
+docs/power_bi_guide.md
+
 # OS / editor
 .DS_Store
 Thumbs.db
