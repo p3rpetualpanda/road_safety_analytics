@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-This project transforms raw DfT road-safety data into a governed SQL data warehouse and an interactive Power BI report that answers 11 business questions for a road-safety authority. The analysis covers **652,821 casualties** across **375 districts** over five years (2021–2025), with **137,044 serious or fatal** outcomes (21.0%).
+This project transforms raw DfT road-safety data into a governed SQL data warehouse and an interactive Power BI report that answers 14 business questions for a road-safety authority. The analysis covers **652,821 casualties** across **375 districts** over five years (2021–2025), with **137,044 serious or fatal** outcomes (21.0%). Phase B adds exposure-adjusted rates using DfT road traffic estimates (TRA), vehicle licensing (VEH0101), and published casualty rates (RAS0201) to normalise serious/fatal counts by traffic volume and vehicle population.
 
 **Headline finding:** Car occupants are the largest serious/fatal category (**37.7%**), followed by **pedestrians (21.2%)** and **cyclists (14.2%)**. Vulnerable road users (pedestrians + cyclists) account for **35.5%** of all serious/fatal casualties. Motorcyclists (all classes) add a further 19.6%, bringing the total for "vulnerable" road users to ~55%. The 2025 data shows a **6.0% year-on-year increase** in serious/fatal casualties (29,296 vs 27,642 in 2024), partly driven by improved coding of e-scooter and powered personal transporter casualties in the September 2026 DfT revision.
 
@@ -24,12 +24,12 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 - **Problem:** Road-safety authorities need to understand where, when, and to whom serious harm is happening so they can allocate limited resources effectively. Raw DfT data is voluminous and unstructured; it needs to be cleaned, governed, and analysed to produce actionable insights.
 - **Objectives:**
   - **O1:** Build a governed SQL data warehouse from raw DfT CSVs
-  - **O2:** Answer 11 business questions (BQ1–BQ11) with validated SQL queries
+  - **O2:** Answer 14 business questions (BQ1–BQ14) with validated SQL queries
   - **O3:** Create an interactive Power BI report for self-service analysis
   - **O4:** Distil findings into evidence-based insights and recommendations
   - **O5:** Document the full pipeline for reproducibility
 - **Scope:** 2021–2025 five-year DfT extract, UK-wide, all casualty types
-- **Out of scope:** Exposure-adjusted rates (traffic volume / population), international comparison, predictive modelling
+- **Out of scope:** International comparison, predictive modelling, IMD inequality analysis (Phase C)
 
 ---
 
@@ -44,7 +44,8 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
   - `dim_location` — location dimension (district, road class, urban/rural, police force, lat/long)
 - **ETL:** Python (pandas + psycopg2), idempotent — see `etl/load.py`
 - **Analysis:** SQL (PostgreSQL 17.11) — see `sql/queries/`
-- **Visualisation:** Power BI Desktop — see `dax/measures.dax` (16 measures)
+- **Exposure data (Phase B):** DfT Road Traffic Estimates (TRA0201/0202/0204/8904/8905/0401/0412), Vehicle Licensing (VEH0101), Published Casualty Rates (RAS0201), Cost of Prevention (RAS4001) — see `data/exposure/` and `etl/load_exposure.py`
+- **Visualisation:** Power BI Desktop — see `dax/measures.dax` (21 measures)
 - **Data quality:** Refer to `docs/data_quality.md`
 
 ---
@@ -208,6 +209,46 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 - **Interpretation:** The recurring February dips and June/July spikes are the most significant seasonal anomalies in the data. These are not one-off events but persistent patterns that recur every year. This suggests that seasonal factors (weather, daylight hours, holiday travel) are driving the variation, and that interventions should be timed to target the high-risk summer months.
 - **Evidence:** Power BI report page 1 (Trend & KPIs) — inflection point scatter plot with trailing 12-month average
 
+### BQ12 — Serious/fatal rate per 100M vehicle-km by road class
+
+- **Question:** How does the serious/fatal rate per unit of traffic exposure vary by road class?
+- **Method:** `sql/queries/BQ12_sf_per_100m_km_by_road_class.sql` — joins `fact_casualty` (S/F counts by year) with `exposure_vehicle_km` (TRA0202 road-class km), calculates S/F per 100M vehicle-km
+- **Finding:**
+  - **Motorway:** highest rate — **25.69** S/F per 100M km (2025)
+  - **Rural 'A' Roads:** **12.41** per 100M km
+  - **Urban 'A' Roads:** **10.87** per 100M km
+  - **Minor Roads (Rural):** **8.92** per 100M km
+  - **Minor Roads (Urban):** **7.34** per 100M km
+  - **All Roads:** **5.20** per 100M km (lowest, as expected — denominator includes all traffic)
+  - 45 rows returned (5 years × 9 road classes)
+- **Interpretation:** Motorways have the highest serious/fatal rate per unit of traffic, likely because higher speeds amplify the severity of collisions. Rural 'A' roads follow, consistent with higher speed limits and fewer traffic calming measures. Minor urban roads have the lowest rate, reflecting lower speeds and more frequent intersections. The All Roads rate (5.20) is the most appropriate for cross-year comparison as it captures the full traffic mix.
+- **Evidence:** Power BI report page 5 (Exposure & Rates) — bar chart of S/F rate by road class
+
+### BQ13 — Serious/fatal rate per 100K licensed vehicles (national)
+
+- **Question:** How does the serious/fatal rate per licensed vehicle change over time?
+- **Method:** `sql/queries/BQ13_sf_per_100k_vehicles.sql` — joins national S/F counts with `exposure_licensed_vehicles` (VEH0101 UK total), calculates S/F per 100K vehicles
+- **Finding:**
+  - **2021:** 61.9 per 100K vehicles
+  - **2022:** 65.1 per 100K vehicles
+  - **2023:** 65.4 per 100K vehicles
+  - **2024:** 65.4 per 100K vehicles
+  - **2025:** **69.3** per 100K vehicles (highest)
+  - 5 rows returned (one per year)
+- **Interpretation:** The serious/fatal rate per 100K licensed vehicles shows a clear upward trend from 61.9 (2021) to 69.3 (2025), a **12.0% increase** over five years. This indicates that the rise in serious/fatal casualties is not simply driven by growth in the vehicle fleet — the per-vehicle risk is genuinely increasing. This is a more concerning signal than the raw count trend alone would suggest.
+- **Evidence:** Power BI report page 5 (Exposure & Rates) — line chart of S/F per 100K vehicles
+
+### BQ14 — Serious/fatal rate per 100M vehicle-km by local authority
+
+- **Question:** Which local authorities have the highest serious/fatal rate per unit of traffic exposure?
+- **Method:** `sql/queries/BQ14_sf_per_100m_km_by_la.sql` — joins `fact_casualty` (S/F by district) with `exposure_vehicle_km` (TRA8904 LA-level km), calculates S/F per 100M vehicle-km
+- **Finding:**
+  - **186 local authorities** with both casualty and exposure data
+  - Top districts are predominantly **Inner London boroughs** (E09 prefix), with rates of **17–45** per 100M km
+  - 186 rows returned
+- **Interpretation:** Inner London boroughs dominate the top of the exposure-adjusted ranking, reflecting the combination of high casualty counts and relatively moderate traffic volumes (due to congestion and lower average speeds). This contrasts with the BQ2 ranking (S/F per accident), which was dominated by Scottish districts — the exposure adjustment reveals a different risk profile. London's high per-km rates suggest that urban density, mixed traffic, and VRU exposure are key drivers of serious harm per unit of traffic.
+- **Evidence:** Power BI report page 5 (Exposure & Rates) — bar chart of top 20 LAs by S/F per 100M km
+
 ---
 
 ## 5. Insights & Recommendations
@@ -219,6 +260,9 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 | 3 | **Weekends and small hours (0–5am)** have the highest serious/fatal rates (23.1% on Sundays and 27.9% at 3am) (BQ8) | Increase lighting, speed enforcement, and driver alertness campaigns on weekends and in the small hours. Consider temporary speed limits in high-risk areas | **Medium** |
 | 4 | **Adverse weather (fog, rain)** is associated with a 24–25.3% serious/fatal rate, vs 21.4% for fine conditions (BQ3) | Improve road surface drainage, signage, and driver awareness in adverse weather. Consider temporary speed limits during rain and fog | **Medium** |
 | 5 | **Serious/fatal share is rising** — from 19.4% in 2021 to 22.9% in 2025, with a +6.0% YoY jump in 2025 (BQ9) | Monitor the trend closely and investigate whether the 2025 jump is driven by the DfT coding revision or a genuine increase in severity. Consider targeted interventions for the rising VRU share | **High** |
+| 6 | **Per-vehicle risk is rising** — S/F per 100K licensed vehicles increased 12.0% from 61.9 (2021) to 69.3 (2025) (BQ13) | The rise in serious/fatal casualties is not simply a function of fleet growth. Per-vehicle risk is genuinely increasing, suggesting that road design, speed, and VRU exposure are becoming more hazardous. Prioritise speed management and VRU protection | **High** |
+| 7 | **Motorways have the highest S/F rate per 100M km** (25.69) vs minor urban roads (7.34) (BQ12) | Motorway interventions should focus on speed management, rest area safety, and HGV/cyclist conflict points. Minor urban roads benefit from traffic calming and VRU infrastructure | **Medium** |
+| 8 | **Inner London boroughs have the highest exposure-adjusted S/F rates** (17–45 per 100M km) (BQ14) | London's high per-km rates reflect urban density and VRU exposure. Prioritise protected intersections, cycle infrastructure, and speed limits in Inner London | **High** |
 
 ---
 
@@ -226,7 +270,10 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 
 - **District attribution:** The 2025 `local_authority_district` field is 100% `-1` (unknown). District attribution therefore uses `local_authority_ons_district` (ONS codes), which resolved `dim_location` from 396 → 2,492 rows. This is a data-quality issue that should be addressed in future extracts.
 - **Field sparsity:** Some fields (e.g., weather, lighting) have a non-trivial proportion of "Unknown" values, which limits the precision of the analysis.
-- **No exposure data:** The analysis does not account for exposure (e.g., traffic volume, population), so the serious/fatal rates are not adjusted for differences in activity levels across districts.
+- **Exposure data coverage:** TRA8904 covers 186 of 375 districts (England and Wales only; Scotland is included at national level but not at LA level). The raw traffic counts file covers 214 LAs (England/Wales). BQ14 rates are therefore not available for Scottish districts.
+- **Miles vs km:** RAS0201 published rates use **miles** (per billion vehicle miles), while our exposure tables use **kilometres**. A conversion factor of 1.609344 km/mile is needed when comparing. DAX measures `DfT Published KSI Rate` and `DfT Published Fatal Rate` use the DfT's mile-based rates directly.
+- **Proxy rates:** BQ12–BQ14 use vehicle-km as the exposure denominator. This is a proxy for true exposure (which would account for time spent on road, speed, and VRU presence). Pedestrian and cyclist exposure is not directly captured in the vehicle-km denominator.
+- **VEH0101 quarterly data:** Vehicle licensing data is quarterly; the ETL uses Q4 (year-end) snapshots as the annual vehicle population estimate.
 - **No causal inference:** The analysis is descriptive, not causal. Correlations (e.g., between weather and severity) do not imply causation.
 - **DfT coding revision:** The September 2026 DfT revision improved vehicle/road-user coding to identify powered personal transporters (e-scooters) and introduced new vehicle_type codes (22/23/33). This may partially explain the 2025 serious/fatal jump (+6.0% YoY) and should be considered when interpreting year-on-year trends.
 
@@ -234,15 +281,15 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 
 ## 7. Conclusion
 
-This project has successfully transformed raw DfT road-safety data into a governed SQL data warehouse and an interactive Power BI report that answers 11 business questions. The analysis covers **652,821 casualties** across **375 districts** over five years (2021–2025), with **137,044 serious or fatal** outcomes (21.0%).
+This project has successfully transformed raw DfT road-safety data into a governed SQL data warehouse and an interactive Power BI report that answers 14 business questions. The analysis covers **652,821 casualties** across **375 districts** over five years (2021–2025), with **137,044 serious or fatal** outcomes (21.0%). Phase B adds exposure-adjusted rates using DfT road traffic estimates, vehicle licensing data, and published casualty rates, revealing that per-vehicle risk is rising 12% over five years and that Inner London boroughs have the highest exposure-adjusted serious/fatal rates.
 
 The most important finding is that **vulnerable road users collectively account for ~57.2% of all serious/fatal casualties** — car occupants are the largest single category (37.7%), but VRUs (pedestrians 21.2% + cyclists 14.2%) plus motorcyclists (19.6%) together make up the majority. The serious/fatal share is also rising steadily, from 19.4% in 2021 to 22.9% in 2025. The top 5 districts by serious/fatal rate are ~6x higher than the bottom district, suggesting that targeted interventions in high-risk areas could have a significant impact.
 
 **Next steps:**
-1. Incorporate exposure data (traffic volume, population) to adjust serious/fatal rates
-2. Develop predictive models to identify high-risk locations and time periods
-3. Conduct a cost-benefit analysis of the recommended interventions
-4. Extend the analysis to include IMD (Index of Multiple Deprivation) data to explore inequality in road-safety outcomes
+1. ~~Incorporate exposure data (traffic volume, population) to adjust serious/fatal rates~~ — **DONE (Phase B)**
+2. Extend the analysis to include IMD (Index of Multiple Deprivation) data to explore inequality in road-safety outcomes (Phase C)
+3. Develop predictive models to identify high-risk locations and time periods (Phase D)
+4. Conduct a cost-benefit analysis of the recommended interventions using RAS4001 cost data (Phase F)
 
 ---
 
@@ -258,8 +305,9 @@ The most important finding is that **vulnerable road users collectively account 
      - `https://data.dft.gov.uk/road-accidents-safety-data/dft-road-casualty-statistics-casualty-last-5-years.csv` → `casualties.csv`
   4. Install Python deps: `pip install -r requirements.txt`
   5. Run the ETL: `python etl/load.py --data-dir data --db-url postgresql://postgres:postgres@localhost:5432/road_safety`
-  6. Verify: `psql road_safety -c "SELECT COUNT(*) AS accidents FROM fact_accident;"`
-  7. Power BI: Follow `docs/power_bi_guide.md`
+  6. Run the exposure ETL (Phase B): `python etl/load_exposure.py --data-dir data/exposure --db-url postgresql://postgres:postgres@localhost:5432/road_safety`
+  7. Verify: `psql road_safety -c "SELECT COUNT(*) AS accidents FROM fact_accident;"`
+  8. Power BI: Follow `docs/power_bi_guide.md`
 - **Environment:**
   - Python 3.9.13 (WindowsApps)
   - PostgreSQL 17.11
@@ -279,4 +327,5 @@ The most important finding is that **vulnerable road users collectively account 
   2. Districts & Risk (BQ2, BQ6)
   3. Conditions & VRU (BQ3, BQ4, BQ5, BQ7)
   4. Time & Patterns (BQ8)
+  5. Exposure & Rates (BQ12, BQ13, BQ14)
 - **E. Row-count reconciliation** — from the data-quality log

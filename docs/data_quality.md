@@ -17,6 +17,7 @@ fix them silently.
 | Live source | `https://data.dft.gov.uk/road-accidents-safety-data/` |
 | Licence | UK Open Government Licence (OGL v3.0) |
 | Files | `accidents.csv`, `vehicles.csv`, `casualties.csv` |
+| Phase B exposure | 10 DfT ODS files (TRA, VEH, RAS) in `data/exposure/` |
 | Link key | `collision_index` (accidents 1:N vehicles, 1:N casualties) |
 | Year range | 2021–2025 (last-5-years extract) |
 
@@ -154,6 +155,73 @@ definition was wrong because `casualty_class=1` means "Driver or rider"
 drivers/riders as VRUs. The new definition correctly identifies
 pedestrians and cyclists by their road-user type.
 
+## 3.6 Phase B: exposure data quality (2026-10-08)
+
+The Phase B exposure ETL (`etl/load_exposure.py`) loads 10 DfT ODS files
+into 4 exposure tables. Key data-quality decisions and caveats:
+
+### 3.6.1 Units normalisation
+
+| Source | Native unit | Normalised to |
+|--------|-------------|---------------|
+| TRA0201/0202/0204/0401/0412 | Billion vehicle-km | **Million vehicle-km** (×1000) |
+| TRA8904/8905 | Million vehicle-km | Million vehicle-km (×1) |
+| VEH0101 | Thousands (vehicles) | Thousands (vehicles) |
+| RAS0201 Rates | Per billion **miles** | Per billion miles (no conversion — DfT's own rates) |
+| RAS4001 | £ (GBP) | £ (GBP) |
+
+**Miles vs km:** RAS0201 rates use **miles**, not km. 1 mile = 1.609344 km.
+The DAX measures `DfT Published KSI Rate` and `DfT Published Fatal Rate`
+use DfT's mile-based rates directly (no conversion), so they are
+comparable to DfT's own published figures but **not** directly comparable
+to the km-based BQ12/BQ14 rates.
+
+### 3.6.2 `[note N]` suffixes in column names
+
+ODS files have column names like `2000 [note 1]`, `Light Commercial
+Vehicles [note 1]`, `Major Roads: Motorway [note 1]`. The ETL strips
+these suffixes via regex `^\s*(\d{4})` for year columns and uses the
+full name (including `[note N]`) as the `vehicle_type`/`road_class`
+value in the DB. This means DB values like `'Major Roads: Motorway
+[note 1]'` are **expected and correct** — they are the DfT's own labels.
+
+### 3.6.3 VEH0101 quarterly data
+
+VEH0101 is **quarterly** (not annual). The ETL filters to **Q4
+(year-end)** snapshots only, using the `Date` column format
+`"1994 Q4 (end December)"`. This gives one row per year per geography
+per vehicle type. The 2025 Q4 UK total is ~42.3M vehicles.
+
+### 3.6.4 TRA0204 4D cube double-counting
+
+TRA0204 is a 4-dimensional cube (Road Type × Road Management × Rural
+Urban Classification × Vehicle). To avoid double-counting, the ETL
+filters to `Road Management = 'All'` AND `Rural Urban Classification =
+'All'` before melting. This gives one row per Road Type × Vehicle × Year.
+
+### 3.6.5 TRA8904 coverage
+
+TRA8904 covers **186 of 375** districts in our warehouse. It includes
+aggregate rows (GB All, England All, Scotland All, Wales All) plus
+~235 individual LAs. **Scotland is covered at national level only** —
+individual Scottish council areas are not in TRA8904. This means BQ14
+(S/F per 100M km by LA) is **not available for Scottish districts**.
+
+### 3.6.6 RAS0201 as validation source
+
+RAS0201 contains DfT's **own published casualty rates** (per billion
+miles). These are used as a **validation source** — our BQ12/BQ13/BQ14
+rates should be broadly consistent with DfT's published rates, allowing
+for the km/mile difference and the fact that DfT uses a different
+denominator (all road users vs our S/F only).
+
+### 3.6.7 RAS4001 cost data
+
+RAS4001 provides **cost per casualty** and **cost per collision** in
+£, by severity (Fatal/Serious/Slight), for collision data years 2010–2025
+in 2025 prices. This is **Phase F** (cost-benefit) data — loaded but not
+yet used in any BQ.
+
 ## 4. Assumptions
 
 - **VRU definition**: `casualty_type` 0 (pedestrian) or 1 (cyclist) is
@@ -196,6 +264,16 @@ pedestrians and cyclists by their road-user type.
   the live warehouse. Any vehicle-type or manoeuvre analysis should treat
   the "Unknown" bar as a real, dominant category and be read with that
   caveat; it is not a rendering artefact.
+- **Exposure data coverage (Phase B):** TRA8904 covers 186 of 375 districts
+  (England/Wales only; Scotland national-level only). BQ14 is not available
+  for Scottish districts. The raw traffic counts file covers 214 LAs
+  (England/Wales only).
+- **Miles vs km (Phase B):** RAS0201 rates use miles; conversion
+  1.609344 km/mile. DAX `DfT Published KSI Rate`/`DfT Published Fatal
+  Rate` use DfT's mile-based rates directly.
+- **Proxy rates (Phase B):** vehicle-km is a proxy for true exposure;
+  pedestrian/cyclist exposure is not directly captured. VEH0101 is
+  quarterly — ETL uses Q4 (year-end) snapshots as annual vehicle population.
 
 ## 6. Row-count reconciliation
 
@@ -221,10 +299,20 @@ were valid, no orphaned casualties/vehicles, all dates parsed). The
 172,139 of 652,821 casualties are flagged VRU (94,398 pedestrians +
 77,741 cyclists).
 
+### Phase B exposure tables (2026-10-08)
+
+| Table | Source | Rows | Notes |
+|-------|--------|------|-------|
+| `exposure_vehicle_km` | TRA0201/0202/0204/8904/8905/0401/0412 | ~5,000+ | Vehicle-km by type/road class/LA/year |
+| `exposure_licensed_vehicles` | VEH0101 | ~500+ | Licensed vehicles by type/geography/year (Q4 snapshots) |
+| `exposure_casualty_rates` | RAS0201 | ~500+ | DfT published casualty counts & rates |
+| `exposure_casualty_costs` | RAS4001 | ~300+ | Cost per casualty/collision by severity/year |
+
 ## 7. Change log
 
 | Date | Change | Author |
 |------|--------|--------|
+| 2026-10-08 | **Phase B: exposure data.** Added `etl/load_exposure.py` (10 DfT ODS files → 4 exposure tables). Fixed 7 bugs: `[note N]` suffixes in year/metric columns, whitespace padding in ODS headers/data, TRA0204 4D cube double-counting, VEH0101 quarterly→annual (Q4 filter), `str.extract` returning DataFrame not Series. Added BQ12 (S/F per 100M km by road class), BQ13 (S/F per 100K vehicles), BQ14 (S/F per 100M km by LA). Added 5 DAX measures (21 total). Added Power BI page 5 (Exposure & Rates). Key findings: per-vehicle risk +12% over 5 years (BQ13), motorway highest S/F rate per 100M km (BQ12), Inner London highest exposure-adjusted rates (BQ14) | jake |
 | 2026-10-07 | Loaded the full 2021–2025 extract (513,801 accidents / 652,821 casualties / 937,265 vehicles; `dim_date` 1,826, `dim_location` 2,901). Fixed a `vru_flag` ordering bug: the flag was computed after `casualty_type` was decoded to text, so `to_numeric()` coerced every label to NaN and the flag was always False — now derived from the raw numeric column first (172,139 True). Added a `collision_index` uniqueness + referential-integrity assertion to the ETL | jake |
 | 2026-10-06 | Code-stability audit of the 2021–2025 extract against the DfT data guide (2025): 7 unmapped codes added (weather/road_surface `-1`, vehicle_type `-1`/22/23, manoeuvre 20, propulsion 11); `VEHICLE_TYPE`, `VEHICLE_MANOEUVRE`, `AGE_BAND_OF_DRIVER`, `PROPULSION_CODE` dicts corrected to the data-guide scheme; `casualty_class` (role) split from `casualty_type` (road-user type) — new `casualty_class` column in `fact_casualty`; VRU flag redefined as `casualty_type` in {0,1}; BQ4 driver-age CASE rewritten to the new band scheme | jake |
 | 2026-10-03 | Initial log created | jake |

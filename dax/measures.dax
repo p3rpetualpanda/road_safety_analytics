@@ -165,3 +165,95 @@ CALCULATE (
     COUNTROWS ( fact_accident ),
     fact_accident[severity] IN { 1, 2 }
 )
+
+// ============================================================
+// Phase B — Exposure-adjusted rate measures
+// ============================================================
+// Requires the following tables in the Power BI model:
+//   - exposure_vehicle_km       (year, geo_code, geo_name,
+//                                vehicle_type, road_class,
+//                                vehicle_km_million, source_table)
+//   - exposure_licensed_vehicles(year, geo_name, vehicle_type,
+//                                vehicles_thousand, source_table)
+//   - ras0201_rates             (year, road_user_type, severity,
+//                                rate_unit, rate_value)
+//
+// Required relationships (single direction, dim_date → exposure):
+//   dim_date[year]  1:*  exposure_vehicle_km[year]
+//   dim_date[year]  1:*  exposure_licensed_vehicles[year]
+//   dim_date[year]  1:*  ras0201_rates[year]
+//
+// All three exposure tables use dim_date[year] as the join key.
+// The relationship direction is dim_date → exposure (single),
+// so date filters flow into the exposure tables automatically.
+// ============================================================
+
+// ------------------------------------------------------------
+// National S/F rate per 100M vehicle-km (all roads)
+// Mirrors BQ12 "All Roads" row. Responds to date filter.
+// ------------------------------------------------------------
+SF Per 100M Vehicle KM =
+VAR SF = [Serious Fatal Casualties]
+VAR KM =
+    CALCULATE (
+        SUM ( exposure_vehicle_km[vehicle_km_million] ),
+        exposure_vehicle_km[source_table] = "TRA0202",
+        exposure_vehicle_km[geo_code] = "GB",
+        exposure_vehicle_km[road_class] = "All Roads"
+    )
+RETURN
+    DIVIDE ( SF * 100, KM, 0 )
+
+// ------------------------------------------------------------
+// S/F rate per 100M vehicle-km by road class
+// Mirrors BQ12. Use with a road_class axis in the visual.
+// The S/F numerator is national (not road-class-specific);
+// the denominator is the road-class-specific km.
+// This is a proxy for relative road-class risk.
+// ------------------------------------------------------------
+SF Per 100M Vehicle KM by Road Class =
+VAR SF = [Serious Fatal Casualties]
+VAR KM =
+    CALCULATE (
+        SUM ( exposure_vehicle_km[vehicle_km_million] ),
+        exposure_vehicle_km[source_table] = "TRA0202",
+        exposure_vehicle_km[geo_code] = "GB"
+    )
+RETURN
+    DIVIDE ( SF * 100, KM, 0 )
+
+// ------------------------------------------------------------
+// National S/F rate per 100k licensed vehicles (UK)
+// Mirrors BQ13. Responds to date filter.
+// ------------------------------------------------------------
+SF Per 100K Vehicles =
+VAR SF = [Serious Fatal Casualties]
+VAR VEH =
+    CALCULATE (
+        SUM ( exposure_licensed_vehicles[vehicles_thousand] ),
+        exposure_licensed_vehicles[geo_name] = "United Kingdom",
+        exposure_licensed_vehicles[vehicle_type] = "Total"
+    )
+RETURN
+    DIVIDE ( SF * 100000, VEH * 1000, 0 )
+
+// ------------------------------------------------------------
+// DfT published KSI rate (per billion vehicle miles)
+// From RAS0201 Rates sheet — DfT's own published casualty rates.
+// Use for validation against our calculated rates.
+// Note: DfT uses MILES, not km. 1 mile = 1.609344 km.
+// ------------------------------------------------------------
+DfT Published KSI Rate =
+CALCULATE (
+    MAX ( ras0201_rates[rate_value] ),
+    ras0201_rates[road_user_type] = "All road users",
+    ras0201_rates[severity] = "KSI (adjusted)"
+)
+
+// DfT published fatal rate (per billion vehicle miles)
+DfT Published Fatal Rate =
+CALCULATE (
+    MAX ( ras0201_rates[rate_value] ),
+    ras0201_rates[road_user_type] = "All road users",
+    ras0201_rates[severity] = "Killed"
+)

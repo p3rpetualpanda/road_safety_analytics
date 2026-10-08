@@ -1,7 +1,8 @@
 # Power BI Build Guide — Road Safety Analytics
 
 Phase 4 deliverable: a working, interactive `.pbix` report with a documented
-star-schema data model, DAX measures, and 4 report pages.
+star-schema data model, DAX measures, and 5 report pages (including the
+Phase B Exposure & Rates page).
 
 This guide is written so a marker can reproduce the report in < 30 minutes.
 All DAX lives in version control at [`dax/measures.dax`](../dax/measures.dax).
@@ -14,14 +15,14 @@ Work top to bottom. Each step links to the section with the detail.
 
 | # | Step | Where |
 |---|---|---|
-| 1 | Confirm the `road_safety` DB is up and loaded (513,801 accidents / 652,821 casualties) | §1 |
+| 1 | Confirm the `road_safety` DB is up and loaded (513,801 accidents / 652,821 casualties / 4 exposure tables) | §1 |
 | 2 | Connect: Get Data → PostgreSQL → `localhost` / `road_safety` / `postgres:postgres` | §1 |
-| 3 | Load the 5 tables (Navigator GUI **or** paste `dax/power_query.m`) | §3 |
-| 4 | **Close & Apply** — verify 5 tables appear in the Fields pane | §3 |
-| 5 | Wire the 5 single-directional relationships (or apply `dax/model.tmdl`) | §2 |
+| 3 | Load the 9 tables (Navigator GUI **or** paste `dax/power_query.m`) | §3 |
+| 4 | **Close & Apply** — verify 9 tables appear in the Fields pane | §3 |
+| 5 | Wire the 5 single-directional relationships (exposure tables are disconnected) | §2 |
 | 6 | Mark `dim_date` as the date table on `full_date` | §2 |
-| 7 | Add the 16 DAX measures (or they come with the TMDL) | §4 |
-| 8 | Build the 4 report pages | §5 |
+| 7 | Add the 21 DAX measures (or they come with the TMDL) | §4 |
+| 8 | Build the 5 report pages (including Exposure & Rates) | §5 |
 | 9 | Add slicers / drill-down / tooltips + theme + "how to read" note | §6 |
 | 10 | Save as `road_safety_visuals.pbix` (repo root) and tick the checklist | §7 |
 
@@ -36,7 +37,7 @@ Work top to bottom. Each step links to the section with the detail.
 
 | Factor | Import (chosen) | DirectQuery |
 |---|---|---|
-| Dataset size | ~413k rows total — trivially small | overkill |
+| Dataset size | ~2.1M rows total (5 facts/dims + 4 exposure) — small | overkill |
 | Report-time dependency | none (data cached in `.pbix`) | DB must be running |
 | Visual performance | best (in-memory VertiPaqi) | per-visual round-trip to Postgres |
 | Reproducibility | `.pbix` is self-contained | needs `road_safety` DB present |
@@ -56,12 +57,16 @@ is fully portable.
 5. Click **OK** → sign in with:
    - User: `postgres`
    - Password: `postgres`
-6. In the Navigator, tick the 5 tables:
+6. In the Navigator, tick the 9 tables:
    - `dim_date`
    - `dim_location`
    - `fact_accident`
    - `fact_casualty`
    - `fact_vehicle`
+   - `exposure_vehicle_km` *(Phase B — TRA road traffic estimates)*
+   - `exposure_licensed_vehicles` *(Phase B — VEH0101 fleet sizes)*
+   - `exposure_casualty_rates` *(Phase B — RAS0201 DfT published rates)*
+   - `exposure_casualty_costs` *(Phase B — RAS4001 cost of prevention)*
 7. Click **Transform Data** (optional — see §3 for the one cleanup) or **Load**.
 
 > **Driver note:** Power BI Desktop ships its own PostgreSQL connector; no ODBC
@@ -71,9 +76,12 @@ is fully portable.
 
 ## 2. Data model — star schema, single-directional
 
-Five tables, five relationships. Every relationship is **single-directional**
+Nine tables, five relationships. Every relationship is **single-directional**
 (filter flows from the "one" side to the "many" side) and the graph is
-**acyclic** — no circular relationships.
+**acyclic** — no circular relationships. The four Phase B exposure tables are
+**disconnected** (no relationships) — they are joined to the fact tables via
+DAX `CALCULATE` + `FILTER` on `year` (and optionally `geo_code`), not via
+relationship arrows.
 
 ```
                  dim_date (1)
@@ -121,20 +129,21 @@ Without this, the `DATEADD` measures in `dax/measures.dax` will not resolve.
 
 ---
 
-## 3. Power Query — load the 5 tables
+## 3. Power Query — load the 9 tables
 
 Two equivalent ways to get the data in. Pick one.
 
 ### Option A — Navigator GUI (fastest)
 
-Follow the **Connect steps** in §1: Get Data → PostgreSQL → tick the 5 tables
+Follow the **Connect steps** in §1: Get Data → PostgreSQL → tick the 9 tables
 → **Transform Data** (optional) → **Close & Apply**. Power BI generates the M
 for you.
 
 ### Option B — paste the M script (reproducible)
 
-[`dax/power_query.m`](../dax/power_query.m) contains five self-contained
-queries (one per table) with explicit column types mirroring `sql/schema.sql`.
+[`dax/power_query.m`](../dax/power_query.m) contains nine self-contained
+queries (one per table) with explicit column types mirroring `sql/schema.sql`
+and the exposure table DDL in `etl/load_exposure.py`.
 For each table: **Home → New Query → Advanced Editor** → clear the template →
 paste the matching block → **Done**. Then **Home → Close & Apply**.
 
@@ -187,9 +196,18 @@ definition one at a time). Summary of what's provided:
 | `Serious Fatal 3yr Avg` | 3-year rolling average of serious/fatal (trend smoothing) |
 | `Serious Fatal MA 12m` | 12-month moving average of serious/fatal (seasonal smoothing) |
 | `Seasonality Index` | month S/F ÷ monthly average S/F × 100 (BQ10) |
+| `SF per 100M km by Road Class` | S/F ÷ vehicle-km by road class (BQ12, Phase B) |
+| `SF per 100K Vehicles` | S/F ÷ licensed vehicles (BQ13, Phase B) |
+| `SF per 100M km by LA` | S/F ÷ vehicle-km by local authority (BQ14, Phase B) |
+| `DfT Published KSI Rate` | DfT's own KSI rate per bn vehicle miles (RAS0201, Phase B) |
+| `DfT Published Fatal Rate` | DfT's own fatal rate per bn vehicle miles (RAS0201, Phase B) |
 
 > **Note:** `Total Accidents` and the old `Accidents` duplicate were merged —
 > only `Total Accidents` remains (it is the one referenced by other measures).
+>
+> **Phase B measures** join the disconnected exposure tables via `CALCULATE`
+> + `FILTER` on `year` (and `geo_code` for BQ14). They do not use
+> relationships — the exposure tables have no keys that match the fact tables.
 
 ### Why two "extra" measures exist (filter direction)
 
@@ -217,9 +235,9 @@ table the filter actually lives in:
 
 ---
 
-## 5. Report pages (4)
+## 5. Report pages (5)
 
-Narrative flow: **what happened → where → who/what → why (conditions)**.
+Narrative flow: **what happened → where → who/what → why (conditions) → how risky per unit of exposure**.
 
 > **What was actually built:** all four pages use **bar charts** (plus KPI
 > cards on Page 1). The earlier draft of this guide described a map, donut and
@@ -259,6 +277,23 @@ Narrative flow: **what happened → where → who/what → why (conditions)**.
 - *Stakeholder question answered:* "When and under what conditions do the
   worst outcomes happen?"
 
+### Page 5 — Exposure & Rates (Phase B)
+- **Bar chart:** `SF per 100M km by Road Class` by `exposure_vehicle_km[road_class]`
+  (BQ12 — motorway highest at 25.7, minor urban lowest at 7.3).
+- **Bar chart:** `SF per 100K Vehicles` by `dim_date[year]`
+  (BQ13 — per-vehicle risk rising: 61.9 → 69.3, +12% over 5 years).
+- **Bar chart:** `SF per 100M km by LA` by `exposure_vehicle_km[geo_name]`
+  (BQ14 — top 20 districts; Inner London boroughs dominate).
+- **KPI cards:** `DfT Published KSI Rate`, `DfT Published Fatal Rate`
+  (RAS0201 — DfT's own published rates for validation).
+- *Stakeholder question answered:* "Is the risk per unit of exposure actually
+  rising, and where is it highest?"
+
+> **Exposure tables are disconnected:** the Phase B measures use `CALCULATE`
+> + `FILTER` to join on `year` (and `geo_code` for BQ14). No relationship
+> arrows are needed. The exposure tables appear in the Fields pane but do not
+> filter the fact tables directly.
+
 ---
 
 ## 6. Interactivity & polish
@@ -281,7 +316,7 @@ Narrative flow: **what happened → where → who/what → why (conditions)**.
 - [ ] DAX in version control — `dax/measures.dax` ✅
 - [ ] Data model in version control — `dax/model.tmdl` ✅
 - [ ] Data model documented — this file, §2 ✅
-- [ ] 4 report pages with narrative flow — §5 ✅
+- [ ] 5 report pages with narrative flow (incl. Exposure & Rates) — §5 ✅
 - [ ] Slicers / drill-down / tooltips — §6 ✅
 - [ ] Consistent theme — §6 ✅
 - [ ] "How to read this report" note — §6 ✅

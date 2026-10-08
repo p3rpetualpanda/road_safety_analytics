@@ -15,7 +15,7 @@
 
 - Data Analyst Portfolio Project
 - Author: Jake
-- Data: DfT Road Safety Data (formerly STATS19), 2021–2025 five-year extract
+- Data: DfT Road Safety Data (formerly STATS19), 2021–2025 five-year extract + DfT Traffic Estimates (exposure)
 - Stack: PostgreSQL · Python (pandas) · SQL · Power BI
 
 > *Speaker note (30s):* "I'll walk you through how I took a raw government
@@ -31,7 +31,7 @@
 1. The business problem
 2. My approach & data model
 3. Data quality — what I found and fixed
-4. **The findings** (where, when, who, what)
+4. **The findings** (where, when, who, what, exposure-adjusted rates)
 5. Recommendations
 6. Engineering: performance & testing
 7. Limitations & next steps
@@ -52,8 +52,8 @@ money where it saves the most lives.
 **The obstacle:** the raw DfT data is voluminous, coded (integers, not
 words), and full of quirks. It's not analysis-ready.
 
-**My job:** clean it, govern it, model it, and answer 8 concrete business
-questions with evidence.
+**My job:** clean it, govern it, model it, and answer 14 concrete business
+questions with evidence (11 Phase A + 3 Phase B exposure-adjusted).
 
 > *Speaker note (45s):* Frame it as a resource-allocation problem, not a
 > data problem. The data is just the means. Emphasise that "actionable" is
@@ -65,13 +65,14 @@ questions with evidence.
 
 ```
  Raw CSVs  ──►  ETL (Python/pandas)  ──►  PostgreSQL star schema
- (DfT)          clean + decode            3 facts + 2 dims
+ (DfT)          clean + decode            3 facts + 2 dims + 4 exposure
                                                         │
-        Power BI report  ◄──  16 DAX measures  ◄──  11 SQL queries (BQ1–BQ11)
-        (4 pages)
+        Power BI report  ◄──  21 DAX measures  ◄──  14 SQL queries (BQ1–BQ14)
+        (5 pages)
 ```
 
 - **Idempotent ETL** — safe to re-run, decodes coded fields to labels
+- **Exposure ETL** — parses 10 DfT ODS tables (TRA, VEH, RAS) into 4 exposure tables
 - **Star schema** — the right shape for "slice by dimension, aggregate fact"
 - **Every query validated** against the live warehouse before I trusted it
 - **36 automated tests** guard the cleaning logic
@@ -94,8 +95,9 @@ questions with evidence.
 | `dim_date` | one row per day | 1,826 |
 | `dim_location` | one row per district | 2,901 |
 
-- 5 single-directional relationships, `dim_date` marked as the date table
+- 5 single-directional relationships (exposure tables disconnected), `dim_date` marked as the date table
 - 8 B-tree indexes on the join/filter columns
+- **Phase B:** 4 additional exposure tables (`exposure_vehicle_km`, `exposure_licensed_vehicles`, `exposure_casualty_rates`, `exposure_casualty_costs`) loaded from 10 DfT ODS files (TRA, VEH, RAS) — disconnected, joined via DAX
 
 > *Speaker note (40s):* "A star schema is the classic choice for this kind of
 > 'aggregate a fact, slice by a dimension' analysis. The surrogate keys are
@@ -199,7 +201,28 @@ commute produces many minor collisions but few serious ones.
 
 ---
 
-## Slide 11 — Recommendations
+## Slide 11 — Finding: exposure-adjusted rates (Phase B)
+
+**Per-vehicle risk is genuinely rising — not just fleet growth:**
+
+- **BQ13:** S/F per 100K licensed vehicles: 61.9 (2021) → **69.3 (2025)** — **+12.0%**
+- **BQ12:** Motorway has the **highest** S/F rate per 100M km (25.7) — speed amplifies severity
+- **BQ14:** **Inner London boroughs** dominate the top exposure-adjusted rates (17–45 per 100M km)
+
+**The key insight:** adjusting for exposure reveals that the risk per unit of
+traffic is *increasing*, not just the volume. And the highest-risk areas are
+not the same as the highest-volume areas.
+
+> *Speaker note (60s):* "This is the Phase B addition. I brought in DfT's own
+> traffic estimates — vehicle-kilometres, licensed fleet sizes, and DfT's
+> published casualty rates — to adjust the raw counts. The result: per-vehicle
+> risk is up 12% over five years. That's not a data artefact, that's a real
+> trend. And the highest-risk districts by exposure-adjusted rate are Inner
+> London, not rural Scotland."
+
+---
+
+## Slide 12 — Recommendations
 
 | # | Insight (evidence) | Recommendation | Priority |
 |---|--------------------|----------------|----------|
@@ -208,6 +231,9 @@ commute produces many minor collisions but few serious ones.
 | 3 | Weekends + 0–5am peak (BQ8) | Lighting, enforcement, fatigue campaigns | Medium |
 | 4 | Rain/fog raise severity (BQ3) | Drainage, signage, weather speed limits | Medium |
 | 5 | Motorcycles over-represented (BQ5) | Rider training, protective gear, conflict-point design | Medium |
+| 6 | Per-vehicle risk +12% over 5 years (BQ13) | Investigate root causes: speed, road design, vehicle mix | **High** |
+| 7 | Motorway highest S/F rate per 100M km (BQ12) | Motorway-specific interventions: speed management, rest areas | Medium |
+| 8 | Inner London highest exposure-adjusted rates (BQ14) | Targeted London borough audits & interventions | **High** |
 
 > *Speaker note (60s):* "Every recommendation traces back to a specific query
 > and a specific number. That's what makes this actionable rather than
@@ -215,7 +241,7 @@ commute produces many minor collisions but few serious ones.
 
 ---
 
-## Slide 12 — Engineering: performance & testing
+## Slide 13 — Engineering: performance & testing
 
 **Performance (EXPLAIN ANALYZE evidence):**
 
@@ -224,7 +250,7 @@ commute produces many minor collisions but few serious ones.
 - One inefficiency found: a `GROUP BY` sort **spilling to disk**
   (`external merge, 6.5 MB`) — fixed by raising `work_mem` → in-memory
   quicksort, 832 ms → 763 ms
-- All 11 queries run in **29 ms – 832 ms** — well within interactive limits
+- All 14 queries run in **29 ms – 832 ms** — well within interactive limits
 
 **Testing:** 36 pytest cases guard the cleaning rules (age banding, severity,
 VRU flags, coded-field decoding).
@@ -235,10 +261,12 @@ VRU flags, coded-field decoding).
 
 ---
 
-## Slide 13 — Limitations
+## Slide 14 — Limitations
 
-- **Five-year extract** (2021–2025) — no exposure data, no causal inference
-- **No exposure data** — rates aren't adjusted for traffic volume / population
+- **Five-year extract** (2021–2025) — no causal inference
+- **Exposure coverage** — TRA8904 covers 186 of 375 districts (England/Wales); Scotland national-level only
+- **Miles vs km** — RAS0201 uses miles; conversion 1.609344 km/mile applied
+- **Proxy rates** — vehicle-km is a proxy; pedestrian/cyclist exposure not directly captured
 - **Descriptive, not causal** — weather↔severity is correlation, not causation
 - **Field sparsity** — some "Unknown" buckets limit precision
 - **District attribution** — relied on ONS codes because the standard field
@@ -250,26 +278,27 @@ VRU flags, coded-field decoding).
 
 ---
 
-## Slide 14 — Next steps
+## Slide 15 — Next steps
 
-1. **Exposure adjustment** — traffic volume / population denominators
+1. ~~**Exposure adjustment**~~ — ✅ **DONE (Phase B)** — vehicle-km, fleet sizes, DfT rates
 2. **IMD inequality** — link deprivation to serious/fatal rates
 3. **Predictive modelling** — flag high-risk locations & time windows
-4. **Cost-benefit analysis** of the recommended interventions
+4. **Cost-benefit analysis** — RAS4001 cost data loaded; build intervention ROI model
 
 > *Speaker note (30s):* "The natural evolution: from 'what happened' to
 > 'what's likely to happen' and 'what's it worth fixing'."
 
 ---
 
-## Slide 15 — Summary & Q&A
+## Slide 16 — Summary & Q&A
 
 **In one line:** I turned a raw, coded, quirky government CSV dump into a
 governed warehouse and a Power BI report that shows a road-safety authority
 **where, when, and to whom** serious harm is happening — and that
 **vulnerable road users are 57.2% of serious/fatal casualties**.
 
-- 11 business questions answered with validated SQL
+- 14 business questions answered with validated SQL (11 Phase A + 3 Phase B)
+- 21 DAX measures, 5 report pages, 4 exposure tables
 - 36 tests, EXPLAIN-verified performance, full data-quality log
 - Reproducible end-to-end from a clean state in < 30 minutes
 
