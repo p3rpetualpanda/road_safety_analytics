@@ -158,7 +158,7 @@ pedestrians and cyclists by their road-user type.
 ## 3.6 Phase B: exposure data quality (2026-10-08)
 
 The Phase B exposure ETL (`etl/load_exposure.py`) loads 10 DfT ODS files
-into 4 exposure tables. Key data-quality decisions and caveats:
+into 6 exposure tables. Key data-quality decisions and caveats:
 
 ### 3.6.1 Units normalisation
 
@@ -305,14 +305,16 @@ were valid, no orphaned casualties/vehicles, all dates parsed). The
 |-------|--------|------|-------|
 | `exposure_vehicle_km` | TRA0201/0202/0204/8904/8905/0401/0412 | ~5,000+ | Vehicle-km by type/road class/LA/year |
 | `exposure_licensed_vehicles` | VEH0101 | ~500+ | Licensed vehicles by type/geography/year (Q4 snapshots) |
-| `exposure_casualty_rates` | RAS0201 | ~500+ | DfT published casualty counts & rates |
-| `exposure_casualty_costs` | RAS4001 | ~300+ | Cost per casualty/collision by severity/year |
+| `ras0201_numbers` | RAS0201 | ~420 | DfT published casualty counts (validation) |
+| `ras0201_rates` | RAS0201 | ~390 | DfT published casualty rates (validation) |
+| `ras4001_cost_per_casualty` | RAS4001 | ~80 | Cost per casualty/collision by severity/year |
+| `ras4001_total_cost` | RAS4001 | ~107 | Total cost of collisions by severity/year |
 
 ## 7. Change log
 
 | Date | Change | Author |
 |------|--------|--------|
-| 2026-10-08 | **Phase B: exposure data.** Added `etl/load_exposure.py` (10 DfT ODS files → 4 exposure tables). Fixed 7 bugs: `[note N]` suffixes in year/metric columns, whitespace padding in ODS headers/data, TRA0204 4D cube double-counting, VEH0101 quarterly→annual (Q4 filter), `str.extract` returning DataFrame not Series. Added BQ12 (S/F per 100M km by road class), BQ13 (S/F per 100K vehicles), BQ14 (S/F per 100M km by LA). Added 5 DAX measures (21 total). Added Power BI page 5 (Exposure & Rates). Key findings: per-vehicle risk +12% over 5 years (BQ13), motorway highest S/F rate per 100M km (BQ12), Inner London highest exposure-adjusted rates (BQ14) | jake |
+| 2026-10-08 | **Phase B: exposure data.** Added `etl/load_exposure.py` (10 DfT ODS files → 6 exposure tables). Fixed 7 bugs: `[note N]` suffixes in year/metric columns, whitespace padding in ODS headers/data, TRA0204 4D cube double-counting, VEH0101 quarterly→annual (Q4 filter), `str.extract` returning DataFrame not Series. Added BQ12 (S/F per 100M km by road class), BQ13 (S/F per 100K vehicles), BQ14 (S/F per 100M km by LA). Added 5 DAX measures (21 total). Added Power BI page 5 (Exposure & Rates). Key findings: per-vehicle risk +12% over 5 years (BQ13), motorway highest S/F rate per 100M km (BQ12), Inner London highest exposure-adjusted rates (BQ14) | jake |
 | 2026-10-07 | Loaded the full 2021–2025 extract (513,801 accidents / 652,821 casualties / 937,265 vehicles; `dim_date` 1,826, `dim_location` 2,901). Fixed a `vru_flag` ordering bug: the flag was computed after `casualty_type` was decoded to text, so `to_numeric()` coerced every label to NaN and the flag was always False — now derived from the raw numeric column first (172,139 True). Added a `collision_index` uniqueness + referential-integrity assertion to the ETL | jake |
 | 2026-10-06 | Code-stability audit of the 2021–2025 extract against the DfT data guide (2025): 7 unmapped codes added (weather/road_surface `-1`, vehicle_type `-1`/22/23, manoeuvre 20, propulsion 11); `VEHICLE_TYPE`, `VEHICLE_MANOEUVRE`, `AGE_BAND_OF_DRIVER`, `PROPULSION_CODE` dicts corrected to the data-guide scheme; `casualty_class` (role) split from `casualty_type` (road-user type) — new `casualty_class` column in `fact_casualty`; VRU flag redefined as `casualty_type` in {0,1}; BQ4 driver-age CASE rewritten to the new band scheme | jake |
 | 2026-10-03 | Initial log created | jake |

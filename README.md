@@ -100,7 +100,7 @@ Full step-by-step build guide: **[`docs/power_bi_guide.md`](docs/power_bi_guide.
 2. Connect to `road_safety`, load `dim_date`, `dim_location`,
    `fact_accident`, `fact_casualty`, `fact_vehicle`,
    `exposure_vehicle_km`, `exposure_licensed_vehicles`,
-   `exposure_casualty_rates`, `exposure_casualty_costs`
+   `ras0201_numbers`, `ras0201_rates`, `ras4001_cost_per_casualty`, `ras4001_total_cost`
 3. In the model view, set the 5 single-directional relationships (see guide §2)
 4. Mark `dim_date` as a **date table** (date column = `full_date`)
 5. Add the measures from `dax/measures.dax` (21 measures)

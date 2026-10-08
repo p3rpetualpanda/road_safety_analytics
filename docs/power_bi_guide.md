@@ -15,7 +15,7 @@ Work top to bottom. Each step links to the section with the detail.
 
 | # | Step | Where |
 |---|---|---|
-| 1 | Confirm the `road_safety` DB is up and loaded (513,801 accidents / 652,821 casualties / 4 exposure tables) | §1 |
+| 1 | Confirm the `road_safety` DB is up and loaded (513,801 accidents / 652,821 casualties / 6 exposure tables) | §1 |
 | 2 | Connect: Get Data → PostgreSQL → `localhost` / `road_safety` / `postgres:postgres` | §1 |
 | 3 | Load the 9 tables (Navigator GUI **or** paste `dax/power_query.m`) | §3 |
 | 4 | **Close & Apply** — verify 9 tables appear in the Fields pane | §3 |
@@ -37,7 +37,7 @@ Work top to bottom. Each step links to the section with the detail.
 
 | Factor | Import (chosen) | DirectQuery |
 |---|---|---|
-| Dataset size | ~2.1M rows total (5 facts/dims + 4 exposure) — small | overkill |
+| Dataset size | ~2.1M rows total (5 facts/dims + 6 exposure) — small | overkill |
 | Report-time dependency | none (data cached in `.pbix`) | DB must be running |
 | Visual performance | best (in-memory VertiPaqi) | per-visual round-trip to Postgres |
 | Reproducibility | `.pbix` is self-contained | needs `road_safety` DB present |
@@ -65,8 +65,10 @@ is fully portable.
    - `fact_vehicle`
    - `exposure_vehicle_km` *(Phase B — TRA road traffic estimates)*
    - `exposure_licensed_vehicles` *(Phase B — VEH0101 fleet sizes)*
-   - `exposure_casualty_rates` *(Phase B — RAS0201 DfT published rates)*
-   - `exposure_casualty_costs` *(Phase B — RAS4001 cost of prevention)*
+   - `ras0201_numbers` *(Phase B — RAS0201 DfT published casualty counts)*
+   - `ras0201_rates` *(Phase B — RAS0201 DfT published casualty rates)*
+   - `ras4001_cost_per_casualty` *(Phase B — RAS4001 cost per casualty/collision)*
+   - `ras4001_total_cost` *(Phase B — RAS4001 total cost of collisions)*
 7. Click **Transform Data** (optional — see §3 for the one cleanup) or **Load**.
 
 > **Driver note:** Power BI Desktop ships its own PostgreSQL connector; no ODBC

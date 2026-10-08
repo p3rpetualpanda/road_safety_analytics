@@ -65,14 +65,14 @@ questions with evidence (11 Phase A + 3 Phase B exposure-adjusted).
 
 ```
  Raw CSVs  ──►  ETL (Python/pandas)  ──►  PostgreSQL star schema
- (DfT)          clean + decode            3 facts + 2 dims + 4 exposure
+ (DfT)          clean + decode            3 facts + 2 dims + 6 exposure
                                                         │
         Power BI report  ◄──  21 DAX measures  ◄──  14 SQL queries (BQ1–BQ14)
         (5 pages)
 ```
 
 - **Idempotent ETL** — safe to re-run, decodes coded fields to labels
-- **Exposure ETL** — parses 10 DfT ODS tables (TRA, VEH, RAS) into 4 exposure tables
+- **Exposure ETL** — parses 10 DfT ODS tables (TRA, VEH, RAS) into 6 exposure tables
 - **Star schema** — the right shape for "slice by dimension, aggregate fact"
 - **Every query validated** against the live warehouse before I trusted it
 - **36 automated tests** guard the cleaning logic
@@ -97,7 +97,7 @@ questions with evidence (11 Phase A + 3 Phase B exposure-adjusted).
 
 - 5 single-directional relationships (exposure tables disconnected), `dim_date` marked as the date table
 - 8 B-tree indexes on the join/filter columns
-- **Phase B:** 4 additional exposure tables (`exposure_vehicle_km`, `exposure_licensed_vehicles`, `exposure_casualty_rates`, `exposure_casualty_costs`) loaded from 10 DfT ODS files (TRA, VEH, RAS) — disconnected, joined via DAX
+- **Phase B:** 6 additional exposure tables (`exposure_vehicle_km`, `exposure_licensed_vehicles`, `ras0201_numbers`, `ras0201_rates`, `ras4001_cost_per_casualty`, `ras4001_total_cost`) loaded from 10 DfT ODS files (TRA, VEH, RAS) — disconnected, joined via DAX
 
 > *Speaker note (40s):* "A star schema is the classic choice for this kind of
 > 'aggregate a fact, slice by a dimension' analysis. The surrogate keys are
@@ -298,7 +298,7 @@ governed warehouse and a Power BI report that shows a road-safety authority
 **vulnerable road users are 57.2% of serious/fatal casualties**.
 
 - 14 business questions answered with validated SQL (11 Phase A + 3 Phase B)
-- 21 DAX measures, 5 report pages, 4 exposure tables
+- 21 DAX measures, 5 report pages, 6 exposure tables
 - 36 tests, EXPLAIN-verified performance, full data-quality log
 - Reproducible end-to-end from a clean state in < 30 minutes
 
