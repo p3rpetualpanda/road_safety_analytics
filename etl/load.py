@@ -24,7 +24,7 @@ Cleaning rules (see docs/data_quality.md for the full log)
   casualty class, sex, vehicle type, manoeuvre, propulsion, age band)
   are DECODED to human-readable labels so Power BI reports are
   meaningful; unmapped codes become "Unknown".
-- age / age_of_driver: -1, 0, 99, 999 treated as UNKNOWN -> NULL.
+- age / age_of_driver: -1 treated as UNKNOWN -> NULL (0 = under one year old).
 - accident_time: "HH:MM" (or legacy "HHMM") text -> TIME; invalid -> NULL.
 - lat/long: out-of-range or blank -> NULL.
 - vru_flag: True when casualty_type is 0 (pedestrian) or 1 (cyclist).
@@ -51,14 +51,14 @@ log = logging.getLogger("etl")
 # rendered as "Unknown" so no row is silently dropped.
 # ------------------------------------------------------------------
 WEATHER_CONDITIONS = {
-    1: "Fine no precipitation",
-    2: "Fine with precipitation",
-    3: "Other precipitation",
-    4: "Fog or mist",
-    5: "Cloudy, overcast",
-    6: "Snow, hail, sleet, blowing snow",
-    7: "Rain, showers, sleet, hail",
-    8: "Thunder",
+    1: "Fine no high winds",
+    2: "Raining no high winds",
+    3: "Snowing no high winds",
+    4: "Fine + high winds",
+    5: "Raining + high winds",
+    6: "Snowing + high winds",
+    7: "Fog or mist",
+    8: "Other",
     9: "Unknown",
     -1: "Unknown",
 }
@@ -68,27 +68,27 @@ LIGHT_CONDITIONS = {
     4: "Darkness - lights lit",
     5: "Darkness - lights unlit",
     6: "Darkness - no lights",
-    7: "Twilight",
+    7: "Darkness - lighting unknown",
     -1: "Unknown",
 }
 
 ROAD_SURFACE_CONDITIONS = {
     1: "Dry",
-    2: "Wet or slippery",
-    3: "Snow or ice",
-    4: "Flooded",
-    5: "Oil, gravel, or other obstruction",
+    2: "Wet or damp",
+    3: "Snow",
+    4: "Frost or ice",
+    5: "Flood over 3cm deep",
     9: "Unknown",
     -1: "Unknown",
 }
 
 FIRST_ROAD_CLASS = {
     1: "Motorway",
-    2: "Trunk road",
-    3: "Primary distribution road",
-    4: "Secondary distribution road",
-    5: "Territorial road",
-    6: "Unknown",
+    2: "A(M)",
+    3: "A",
+    4: "B",
+    5: "C",
+    6: "Unclassified",
     -1: "Unknown",
 }
 
@@ -234,8 +234,8 @@ SEX_OF_DRIVER = {
     -1: "Unknown",
 }
 
-# Unknown / missing codes for numeric fields.
-AGE_UNKNOWN = {-1, 0, 99, 999}
+# Unknown / missing code for ages. 0 is a real age (under one year old).
+AGE_UNKNOWN = {-1}
 
 
 # ------------------------------------------------------------------
@@ -248,7 +248,7 @@ def clean_severity(series: pd.Series) -> pd.Series:
 
 
 def clean_age(series: pd.Series) -> pd.Series:
-    """Map unknown-age codes (-1/0/99/999) to NULL."""
+    """Map the unknown-age code (-1) to NULL."""
     s = pd.to_numeric(series, errors="coerce").astype("Int64")
     return s.where(~s.isin(AGE_UNKNOWN))
 
@@ -421,14 +421,15 @@ def run(data_dir: Path, db_url: str) -> None:
 
     # ---------------- dim_location ----------------
     # Key the dimension on the categorical road/geography attributes.
-    # Coordinates are per-accident, so we keep a representative (first)
-    # value per combination rather than one row per accident.
+    # dim_location lat/long is only a representative (first) point per
+    # combination; per-accident coordinates live on fact_accident.
     # Coded fields are decoded to labels BEFORE keying, so the dimension
     # stores human-readable values.
     # NOTE: In the 2025 DfT extract, `local_authority_district` is 100% `-1`
     # (deprecated). The real geography is in `local_authority_ons_district`
-    # (ONS codes: E06=England, E08=Scotland, E09=Wales, S12=Scottish council
-    # areas, W06=Wales, E07=London boroughs). We store the ONS code as the
+    # (ONS codes: E06=English unitary, E07=English non-metropolitan,
+    # E08=English metropolitan, E09=London boroughs, S12=Scottish council
+    # areas, W06=Welsh unitary). We store the ONS code as the
     # district value; `-1` becomes "Unknown".
     district_raw = acc.get("local_authority_ons_district")
     if district_raw is None:
@@ -477,6 +478,8 @@ def run(data_dir: Path, db_url: str) -> None:
     acc["num_vehicles"] = pd.to_numeric(acc.get("number_of_vehicles"), errors="coerce").astype("Int64")
     acc["num_casualties"] = pd.to_numeric(acc.get("number_of_casualties"), errors="coerce").astype("Int64")
     acc["speed_limit"] = pd.to_numeric(acc.get("speed_limit"), errors="coerce").astype("Int64")
+    acc["lat"] = clean_coord(acc.get("latitude"), -90, 90)
+    acc["long"] = clean_coord(acc.get("longitude"), -180, 180)
 
     # Map each accident to its location_key via a vectorized left join on the
     # four key columns (all guaranteed non-NaN strings above). A left join
@@ -550,7 +553,7 @@ def run(data_dir: Path, db_url: str) -> None:
         bulk_insert(cur, "fact_accident", df_to_rows(acc),
                     ["accident_index", "date_key", "location_key", "accident_time",
                      "severity", "weather", "lighting", "road_surface",
-                     "num_vehicles", "num_casualties", "speed_limit"])
+                     "num_vehicles", "num_casualties", "speed_limit", "lat", "long"])
         bulk_insert(cur, "fact_casualty", df_to_rows(cas),
                     ["casualty_rec", "accident_index", "date_key", "location_key",
                      "age", "age_band", "sex", "casualty_class", "casualty_type",

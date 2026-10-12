@@ -527,10 +527,10 @@ def main() -> None:
     for r in cur.fetchall():
         print(f"  {r[0]}  {r[1]:>14,.1f} M km")
 
-    print("\nSample: licensed vehicles (UK, Total) 2021-2025:")
+    print("\nSample: licensed vehicles (GB, Total) 2021-2025:")
     cur.execute("""
         SELECT year, vehicles_thousand FROM exposure_licensed_vehicles
-        WHERE geo_name='United Kingdom' AND vehicle_type='Total'
+        WHERE geo_name='Great Britain' AND vehicle_type='Total'
           AND year BETWEEN 2021 AND 2025 ORDER BY year
     """)
     for r in cur.fetchall():

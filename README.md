@@ -193,18 +193,18 @@ for sanity before it is marked validated.
 | Query | Question | Status |
 |-------|----------|--------|
 | BQ1 | Casualty trend over time | ✅ Validated (5-year monthly trend) |
-| BQ2 | Highest-risk districts / road classes | ✅ Validated (375 real districts) |
-| BQ3 | Casualties by weather / lighting / surface | ✅ Validated (all sums exact) |
-| BQ4 | Age/sex profile of casualties vs drivers | ✅ Validated (18 bands, no spurious zeros) |
+| BQ2 | Highest-risk districts / road classes | ✅ Validated (370 real districts) |
+| BQ3 | Casualties by weather / lighting / surface | ✅ Corrected 2026-10-12 (code tables fixed; weather barely affects severity) |
+| BQ4 | Age/sex profile of casualties vs drivers | ✅ Corrected 2026-10-12 (bands aligned to DfT driver bands) |
 | BQ5 | Vehicle types & manoeuvres in serious/fatal | ✅ Validated (motorcycles dominate) |
-| BQ6 | Geographic high-risk clusters | ✅ Validated (urban clusters) |
+| BQ6 | Geographic high-risk clusters | ✅ Corrected 2026-10-12 (per-collision coordinates; top 5 cells in London) |
 | BQ7 | Vulnerable road-user (ped/cyclist) share | ✅ Validated (35.5% VRU, ~57.2% broad vulnerable) |
 | BQ8 | Time-of-day / day-of-week severity patterns | ✅ Validated (all sums exact) |
 | BQ9 | Annual trend & year-on-year change | ✅ Validated (S/F share rising 19.4%→22.9%) |
-| BQ10 | Seasonality index | ✅ Validated (Feb lowest 81.2, Jun highest 109.0) |
-| BQ11 | Inflection points & anomalies | ✅ Validated (recurring Feb dips, Jun/Jul spikes) |
-| BQ12 | S/F rate per 100M km by road class | ✅ Validated (motorway 25.69, minor urban 7.34) |
-| BQ13 | S/F rate per 100K licensed vehicles | ✅ Validated (61.9→69.3, +12.0% over 5 years) |
+| BQ10 | Seasonality index | ✅ Corrected 2026-10-12 (S/F index: Feb lowest 77.6, Jul highest 111.0) |
+| BQ11 | Inflection points & anomalies | ✅ Validated (Feb dips every year; summer spikes vary) |
+| BQ12 | S/F rate per 100M km by road class | ✅ Corrected 2026-10-12 (minor urban 9.11 highest, motorway 0.77 lowest) |
+| BQ13 | S/F rate per 100K licensed vehicles | ✅ Corrected 2026-10-12 (GB fleet: 63.8→71.5, +12.1%) |
 | BQ14 | S/F rate per 100M km by local authority | ✅ Validated (186 LAs, Inner London top) |
 
 ### Notable data findings so far
@@ -213,24 +213,26 @@ for sanity before it is marked validated.
   attribution therefore uses `local_authority_ons_district` (ONS codes),
   which resolved `dim_location` from 396 → 2,492 rows and restored real
   district-level analysis for BQ2/BQ6.
-- **BQ4 age-band defect fixed** — casualties and drivers are now mapped onto a
-  common reporting grid (18 bands) so the two populations are directly
-  comparable with no artificial zero rows.
+- **BQ4 age bands aligned** — casualties and drivers are mapped onto a grid
+  whose edges match the DfT driver bands (0-15, 16-25, 26-35, 36-45, 46+), so
+  the two populations are directly comparable. 16-25s are over-represented
+  among casualties relative to drivers.
 - **BQ5 signal:** motorcycles are disproportionately represented in
   serious/fatal casualties relative to their share of traffic.
 - **BQ7 signal:** ~57.2% of serious/fatal casualties are vulnerable road users
-  (car occupants 37.7% + VRUs 35.5% + motorcyclists 19.6%). The VRU share is
+  (VRUs 35.5% + motorcyclists 19.7% + e-scooter/e-motorcycle users 2.1%; car
+  occupants are the largest single group at 37.7%). The VRU share is
   stable across the five years (34.6–36.0%).
 - **BQ8 signal:** severity share peaks on Sundays (23.1%) and in the small
   hours (3am 27.9%), versus 8am (17.0%).
 - **BQ9 signal:** serious/fatal share is rising every year — from 19.4% in 2021
-  to 22.9% in 2025, with a +6.0% YoY jump in 2025 (partly driven by the
-  September 2026 DfT coding revision for e-scooters/PPTs).
+  to 22.9% in 2025, with a +6.0% YoY jump in 2025. It still rises on DfT's
+  adjusted severity (20.6% → 23.4%), so it is not only a recording change.
 - **BQ13 signal (Phase B):** per-vehicle risk is rising — S/F per 100K licensed
-  vehicles increased 12.0% from 61.9 (2021) to 69.3 (2025). The rise in
+  vehicles (GB) increased 12.1% from 63.8 (2021) to 71.5 (2025). The rise in
   serious/fatal casualties is not simply a function of fleet growth.
-- **BQ12 signal (Phase B):** motorways have the highest S/F rate per 100M km
-  (25.69) vs minor urban roads (7.34), reflecting higher speeds and severity.
+- **BQ12 signal (Phase B):** urban roads have the highest S/F rate per 100M km
+  (minor urban 9.11, urban 'A' 8.71); motorways are the safest per km (0.77).
 - **BQ14 signal (Phase B):** Inner London boroughs have the highest
   exposure-adjusted S/F rates (17–45 per 100M km), reflecting urban density
   and VRU exposure.

@@ -131,8 +131,8 @@ This is where the real analyst work happened. Highlights:
 # Vulnerable road users are 57.2% of serious/fatal casualties
 
 - **Car occupants: 37.7%** — the largest single group
-- **Pedestrians: 21.2%** · **Cyclists: 14.2%** · **Motorcyclists: 19.6%**
-- Broad vulnerable (ped + cyc + moto + moped + PPT): **57.2%** (78,443 of 137,044)
+- **Pedestrians: 21.2%** · **Cyclists: 14.2%** · **Motorcyclists: 19.7%**
+- Broad vulnerable (ped + cyc + moto + e-scooter/e-motorcycle/mobility scooter): **57.2%** (78,443 of 137,044)
 - Narrow VRU (ped + cyc only, BQ7): **35.5%** (48,595)
 
 **The single most important insight:** more than half of all serious harm
@@ -147,15 +147,15 @@ is happening to people **without the full protection of a car**.
 
 ## Slide 8 — Finding: where
 
-**Districts vary ~5.8× in serious/fatal rate** (per accident):
+**Districts vary ~6.6× in serious/fatal casualties per accident:**
 
-- Top: **S12000034** (Scotland) — 0.628 serious/fatal per accident (441/702)
+- Top: **S12000034** (Scotland) — 0.809 serious/fatal per accident (568/702)
 - Bottom: **EHEATHROW** — 0.109 (13/119)
-- Top 3 districts are all in **Scotland**
+- Top 5 districts are all in **Scotland**
 
 **Geographic clusters** (0.1° grid):
 
-- Top 6 high-risk cells: **5 in the London area** + 1 in Leeds (~12,800
+- Top 6 high-risk cells: **5 in London** + 1 in Birmingham (11,644
   serious/fatal combined) — urban density + traffic volume
 
 > *Speaker note (50s):* "Two different stories: rural Scotland has the
@@ -183,11 +183,11 @@ commute produces many minor collisions but few serious ones.
 
 ## Slide 10 — Finding: conditions & vehicles
 
-**Conditions that raise severity:**
+**Conditions and severity:**
 
-- **Darkness, no lights:** 29.2% serious/fatal (vs 20.0% daylight)
-- **Fog/mist:** 25.3% · **Rain:** 24.2% (vs 21.4% fine)
-- **Wet road:** 21.8% (vs 21.1% dry)
+- **Darkness, no lights:** 29.2% serious/fatal (vs 20.0% daylight) — the big one
+- **Weather barely matters:** fog 24.2%, rain 20.6% (vs 21.4% fine)
+- **Wet road:** 21.8% (vs 21.1% dry); frost/ice 19.6%
 
 **Vehicles & manoeuvres:**
 
@@ -195,8 +195,8 @@ commute produces many minor collisions but few serious ones.
   vehicle/manoeuvre combinations
 - Highest: motorcycle **U-turn** — 62.5% serious/fatal; overtaking offside 62.2%
 
-> *Speaker note (50s):* "Reduced visibility and poor surfaces consistently
-> push severity up. And motorcycles are dramatically over-represented in
+> *Speaker note (50s):* "Unlit roads at night are where severity jumps; bad
+> weather mostly doesn't, probably because people slow down. And motorcycles are dramatically over-represented in
 > serious outcomes relative to their share of traffic."
 
 ---
@@ -205,8 +205,8 @@ commute produces many minor collisions but few serious ones.
 
 **Per-vehicle risk is genuinely rising — not just fleet growth:**
 
-- **BQ13:** S/F per 100K licensed vehicles: 61.9 (2021) → **69.3 (2025)** — **+12.0%**
-- **BQ12:** Motorway has the **highest** S/F rate per 100M km (25.7) — speed amplifies severity
+- **BQ13:** S/F per 100K licensed vehicles (GB): 63.8 (2021) → **71.5 (2025)** — **+12.1%**
+- **BQ12:** Urban roads have the **highest** S/F rate per 100M km (minor urban 9.1); motorways the lowest (0.8)
 - **BQ14:** **Inner London boroughs** dominate the top exposure-adjusted rates (17–45 per 100M km)
 
 **The key insight:** adjusting for exposure reveals that the risk per unit of
@@ -227,12 +227,12 @@ not the same as the highest-volume areas.
 | # | Insight (evidence) | Recommendation | Priority |
 |---|--------------------|----------------|----------|
 | 1 | Vulnerable road users = 57.2% of S/F (broad; BQ7 narrow = 35.5%) | Pedestrian/cyclist/motorcycle interventions: crossings, cycle lanes, speed limits | **High** |
-| 2 | Top districts ~5.8× higher rate (BQ2) | Targeted audits of top 10% of districts | **High** |
+| 2 | Top districts ~6.6× higher rate (BQ2) | Targeted audits of top 10% of districts | **High** |
 | 3 | Weekends + 0–5am peak (BQ8) | Lighting, enforcement, fatigue campaigns | Medium |
-| 4 | Rain/fog raise severity (BQ3) | Drainage, signage, weather speed limits | Medium |
+| 4 | Unlit roads raise severity; weather barely does (BQ3) | Street lighting on unlit high-casualty roads | Medium |
 | 5 | Motorcycles over-represented (BQ5) | Rider training, protective gear, conflict-point design | Medium |
 | 6 | Per-vehicle risk +12% over 5 years (BQ13) | Investigate root causes: speed, road design, vehicle mix | **High** |
-| 7 | Motorway highest S/F rate per 100M km (BQ12) | Motorway-specific interventions: speed management, rest areas | Medium |
+| 7 | Urban roads highest S/F rate per 100M km (BQ12) | Traffic calming, 20mph zones, junction and crossing design | Medium |
 | 8 | Inner London highest exposure-adjusted rates (BQ14) | Targeted London borough audits & interventions | **High** |
 
 > *Speaker note (60s):* "Every recommendation traces back to a specific query
