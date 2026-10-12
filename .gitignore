@@ -25,6 +25,12 @@ dax/power_query.m
 # Personal build guide (local-only, not for the repo)
 docs/power_bi_guide.md
 
+# Tabular Editor 3 / DAX-extension build artifacts
+tmdl_folder/
+*.bim
+*.tmuo
+*.te3daxs
+
 # OS / editor
 .DS_Store
 Thumbs.db
@@ -38,6 +44,12 @@ Thumbs.db
 
 # One-off scratch / verification scripts (underscore-prefixed)
 _*
+
+# Local scratch area (exploratory scripts, tooling artifacts)
+scratch/
+
+# Test cache
+.pytest_cache/
 
 # Local backup of superseded single-year extract (re-downloadable from DfT)
 data/archive_2025/

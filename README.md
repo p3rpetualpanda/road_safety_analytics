@@ -1,6 +1,8 @@
 # Road Safety Analytics — Data Analyst Project
 
-A third-year CS degree project in a **data analyst** role: turn the raw
+![CI](https://github.com/p3rpetualpanda/road_safety_analytics/actions/workflows/ci.yml/badge.svg)
+
+A final-year CS degree project in a **data analyst** role: turn the raw
 DfT **Road Safety Data** (formerly STATS19, Department for Transport) into a
 governed SQL data warehouse and an interactive **Power BI** report that answers
 real questions for a road-safety authority. Phase B adds exposure-adjusted
@@ -21,21 +23,29 @@ raw CSV (data.dft.gov.uk)
 road_safety_analytics/
 ├── README.md                 <- you are here
 ├── requirements.txt          <- Python deps for the ETL
-├── Makefile                  <- convenience commands (setup, load, test)
+├── requirements-dev.txt      <- dev deps (pytest, ruff)
+├── Makefile                  <- convenience commands (setup, load, test, lint, check)
+├── ruff.toml                 <- lint configuration
 ├── .gitignore
-├── data/                     <- raw DfT CSVs (gitignored, you add them)
+├── .github/
+│   └── workflows/ci.yml      <- CI: lint + unit tests on every push/PR
+├── data/
+│   ├── README.md             <- where to get the raw CSVs + exposure files
+│   ├── exposure/             <- DfT ODS files (TRA, VEH, RAS) for Phase B (committed)
+│   └── *.csv                 <- raw DfT CSVs (gitignored, you add them)
 ├── sql/
 │   ├── schema.sql            <- star schema DDL (3 facts + 2 dimensions)
 │   └── queries/              <- one file per business question (BQ1-BQ14)
 ├── etl/
 │   ├── load.py               <- idempotent ETL: CSV -> clean -> warehouse
 │   └── load_exposure.py      <- Phase B: ODS exposure data -> warehouse
-├── data/
-│   ├── exposure/             <- DfT ODS files (TRA, VEH, RAS) for Phase B
-│   └── dft_traffic_counts_raw_counts.csv  <- raw traffic counts (optional)
+├── tests/
+│   ├── conftest.py           <- path setup + DB-driver stub (tests run without a DB)
+│   ├── test_cleaning.py      <- 36 tests for the cleaning/transform layer
+│   └── test_exposure_helpers.py  <- 20 tests for the Phase B parsing helpers
 ├── dax/
 │   ├── measures.dax          <- Power BI DAX measures (21 measures incl. Phase B rates)
-│   └── model.tmdl            <- full data model in TMDL (tables, relationships, measures)
+│   └── model.tmdl            <- full data model in TMDL (11 tables, 8 relationships, measures)
 └── docs/
     ├── data_quality.md       <- data-quality & governance log
     ├── performance.md        <- EXPLAIN ANALYZE evidence (BQ1, BQ2) + index rationale
@@ -112,6 +122,36 @@ See `sql/queries/` — one file per question (BQ1–BQ14). Each file is
 self-documenting: the header states the question, assumptions, and how to
 read the result. BQ12–BQ14 (Phase B) use exposure-adjusted rates.
 
+## Testing & CI
+
+The cleaning/transform layer — where every data-quality decision lives — is
+unit-tested in isolation (no database required: `tests/conftest.py` stubs the
+DB driver, so the suite runs anywhere pandas does):
+
+```powershell
+make test                 # or: python -m pytest tests/ -q
+```
+
+- **56 tests** — `tests/test_cleaning.py` covers severity, age bands, time
+  parsing (new + legacy spec), coordinates, VRU flagging, code decoding and
+  row serialisation; `tests/test_exposure_helpers.py` covers the Phase B ODS
+  parsing helpers (year detection, unit conversion, melt orientations).
+- **CI** runs the same suite plus `ruff` on every push/PR
+  (`.github/workflows/ci.yml`). One command locally: `make check`.
+
+## Skills demonstrated
+
+| Skill | Where to see it |
+|-------|-----------------|
+| Data engineering (ETL) | `etl/load.py`, `etl/load_exposure.py` — idempotent, transactional, fully logged |
+| Data modelling | `sql/schema.sql` — star schema, 3 facts + 2 dimensions + 6 exposure tables |
+| SQL analytics | `sql/queries/` — 14 business questions (CTEs, window functions, ranking) |
+| Data quality & governance | `docs/data_quality.md` — decision log, code-stability audit, OGL citation |
+| Performance engineering | `docs/performance.md` — EXPLAIN ANALYZE, index design, work_mem tuning |
+| DAX / Power BI | `dax/measures.dax`, `dax/model.tmdl` — 21 measures, 11-table versionable TMDL model |
+| Testing & CI | `tests/` (56 tests), `make check`, GitHub Actions workflow |
+| Documentation | `docs/report.md`, `docs/presentation.md`, this README |
+
 ## Data source & licence
 
 - **Source:** Department for Transport, *Road Safety Data* (formerly STATS19),
@@ -123,7 +163,7 @@ read the result. BQ12–BQ14 (Phase B) use exposure-adjusted rates.
 
 ## Status
 
-_Last updated: 2026-10-07._
+_Last updated: 2026-10-12._
 
 The project is **complete (Phases 0–6 + Phase A + Phase B)**. All 14 business
 questions are validated against the live warehouse, the Power BI report
@@ -141,7 +181,7 @@ documented with `EXPLAIN ANALYZE` evidence (`docs/performance.md`), and the
 | 3 | SQL analytics — BQ1–BQ14 | ✅ Complete (all 14 validated) |
 | 4 | Power BI report (model, DAX, 5 pages) | ✅ Complete (report built, 21 measures) |
 | 5 | Insights & recommendations | ✅ Complete (8 insights in `docs/report.md`) |
-| 6 | Documentation, testing & presentation | ✅ Complete (36 tests passing, report finalised, `docs/performance.md`, `docs/presentation.md`) |
+| 6 | Documentation, testing & presentation | ✅ Complete (56 tests passing, CI on every push/PR, report finalised, `docs/performance.md`, `docs/presentation.md`) |
 | A | Multi-year expansion (2021–2025) | ✅ Complete (5-year ETL, BQ9–BQ11, 3 new DAX measures) |
 | B | Exposure-adjusted rates (TRA, VEH, RAS) | ✅ Complete (exposure ETL, BQ12–BQ14, 5 new DAX measures) |
 

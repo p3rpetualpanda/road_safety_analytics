@@ -1,0 +1,55 @@
+name: CI
+
+# Runs the pure unit tests (no database required) on every push and PR.
+# The ETL cleaning/transform functions under test are dependency-light:
+# tests/conftest.py puts etl/ on sys.path and stubs psycopg2 when absent,
+# so all we need is pandas + pytest from requirements-dev.txt.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  # Allow manual runs from the Actions tab.
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Unit tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Match the project's stated lower bound (README: Python 3.10+)
+        # plus a recent stable release.
+        python: ["3.10", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Show toolchain
+        run: |
+          python --version
+          pip --version
+
+      - name: Lint (ruff)
+        run: python -m ruff check etl tests
+
+      - name: Run tests
+        run: python -m pytest tests/ -q

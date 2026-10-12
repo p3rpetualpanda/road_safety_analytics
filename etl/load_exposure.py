@@ -434,7 +434,6 @@ def _load_df(cur, df: pd.DataFrame, table: str) -> int:
     if df.empty:
         return 0
     cols = list(df.columns)
-    placeholders = ", ".join(["%s"] * len(cols))
     colsql = ", ".join(cols)
     # astype(object) first so that None survives: on a float64 column,
     # df.where(pd.notna(df), None) silently casts None back to NaN, and

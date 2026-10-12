@@ -1,3 +1,5 @@
 # Development / test dependencies (on top of the runtime requirements).
 -r requirements.txt
 pytest==8.4.2
+# Lint (safety net: pyflakes + pycodestyle errors; see ruff.toml)
+ruff>=0.4,<1.0
