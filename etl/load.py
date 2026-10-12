@@ -439,7 +439,14 @@ def run(data_dir: Path, db_url: str) -> None:
     )
     acc["road_class"] = decode_code(acc.get("first_road_class"), FIRST_ROAD_CLASS)
     acc["urban_rural"] = decode_code(acc.get("urban_or_rural_area"), URBAN_RURAL)
-    acc["police_force"] = acc.get("police_force")
+    # police_force is a text name (not a coded int), so normalise it the same
+    # way as district: strip whitespace and map NaN/blank to "Unknown". This
+    # guarantees every key column is a non-NaN string BEFORE the location_key
+    # dict lookup below, so a missing value can never silently break the join.
+    acc["police_force"] = (
+        acc.get("police_force").astype(str).str.strip()
+        .replace({"nan": "Unknown", "": "Unknown"})
+    )
 
     key_cols = ["district", "road_class", "urban_rural", "police_force"]
     loc_src = pd.DataFrame({
@@ -471,15 +478,12 @@ def run(data_dir: Path, db_url: str) -> None:
     acc["num_casualties"] = pd.to_numeric(acc.get("number_of_casualties"), errors="coerce").astype("Int64")
     acc["speed_limit"] = pd.to_numeric(acc.get("speed_limit"), errors="coerce").astype("Int64")
 
-    # Map each accident to its location_key
-    loc_lookup = loc.set_index(key_cols)["location_key"].to_dict()
-    acc["location_key"] = [
-        loc_lookup.get((d, r, u, p), None)
-        for d, r, u, p in zip(
-            acc["district"], acc["road_class"],
-            acc["urban_rural"], acc["police_force"],
-        )
-    ]
+    # Map each accident to its location_key via a vectorized left join on the
+    # four key columns (all guaranteed non-NaN strings above). A left join
+    # keeps every accident; unmatched rows get location_key = NaN and are
+    # dropped by the dropna below. This is both faster than a per-row dict
+    # lookup and immune to the NaN != NaN tuple-key pitfall.
+    acc = acc.merge(loc[key_cols + ["location_key"]], on=key_cols, how="left")
 
     # Drop accidents we cannot place in time or space
     before = len(acc)

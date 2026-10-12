@@ -197,5 +197,5 @@ for sanity before it is marked validated.
 
 Full detail lives in `docs/data_quality.md` and `docs/report.md`.
 
-Phases 0–6 are defined in
-`Plans_data/01_Data_Analyst_Road_Safety_Analytics.txt`.
+Phases 0–6 are defined in the project plan
+`01_Data_Analyst_Road_Safety_Analytics.txt` (kept local, gitignored).

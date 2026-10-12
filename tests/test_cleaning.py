@@ -178,7 +178,7 @@ class TestIsVru:
 
 
 # ------------------------------------------------------------------
-# df_to_rows
+# decode_code / df_to_rows
 # ------------------------------------------------------------------
 class TestDecodeCode:
     def test_maps_known_codes(self):

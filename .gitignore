@@ -41,3 +41,9 @@ _*
 
 # Local backup of superseded single-year extract (re-downloadable from DfT)
 data/archive_2025/
+
+# Project plan (local working copy, not part of the deliverable)
+01_Data_Analyst_Road_Safety_Analytics.txt
+
+# VS Code workspace file (local editor config)
+*.code-workspace

@@ -11,10 +11,12 @@ Loads DfT exposure / validation / cost tables (ODS) into PostgreSQL:
 
 All vehicle-km normalised to MILLION vehicle-km.
 
-Run:  python etl/load_exposure.py
+Run:  python etl/load_exposure.py --data-dir data/exposure \
+        --db-url postgresql://user:pass@host:5432/road_safety
 """
 from __future__ import annotations
 
+import argparse
 import os
 import re
 import sys
@@ -24,8 +26,12 @@ import psycopg2
 import psycopg2.extras
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-EXPOSURE_DIR = os.path.join(BASE, "data", "exposure")
-DSN = "postgresql://postgres:postgres@localhost:5432/road_safety"
+DEFAULT_DATA_DIR = os.path.join(BASE, "data", "exposure")
+
+# Directory the ODS files are read from. Set in main() from --data-dir;
+# read_ods_sheet() joins relative filenames against this so the pipeline
+# is independent of the current working directory.
+_DATA_DIR = DEFAULT_DATA_DIR
 
 # ---------------------------------------------------------------------------
 # ODS reading helpers
@@ -53,7 +59,13 @@ def _year_from_name(col) -> int:
 
 def read_ods_sheet(path: str, sheet: str, marker: str) -> pd.DataFrame:
     """Read an ODS data sheet, auto-detecting the header row via a marker
-    string that appears in the first column of the header row."""
+    string that appears in the first column of the header row.
+
+    `path` may be a bare filename (resolved against the configured data
+    directory) or an absolute path, so the pipeline is independent of the
+    current working directory."""
+    if not os.path.isabs(path):
+        path = os.path.join(_DATA_DIR, path)
     raw = pd.read_excel(path, engine="odf", sheet_name=sheet, header=None)
     header_row = None
     for i in range(len(raw)):
@@ -308,23 +320,29 @@ def parse_ras4001_avg() -> pd.DataFrame:
 
 def parse_ras4001_total() -> pd.DataFrame:
     df = read_ods_sheet("ras4001_cost_of_prevention.ods", "Total_value", "Collision data year")
-    colmap = {}
+    # Map logical cost categories to physical columns by phrase. The grand
+    # "Total" is matched last and must not be a category subtotal (e.g.
+    # "Total human costs"), so we exclude columns already claimed above.
+    categories = [
+        ("lost_output_mil", "lost output"),
+        ("medical_mil", "medical"),
+        ("human_costs_mil", "human costs"),
+        ("police_mil", "police"),
+        ("insurance_mil", "insurance"),
+        ("property_damage_mil", "damage to property"),
+    ]
+    colmap: dict[str, str] = {}
     for c in df.columns:
-        cl = c.lower()
-        if "lost output" in cl:
-            colmap["lost_output_mil"] = c
-        elif "medical" in cl:
-            colmap["medical_mil"] = c
-        elif "human costs" in cl:
-            colmap["human_costs_mil"] = c
-        elif "police" in cl:
-            colmap["police_mil"] = c
-        elif "insurance" in cl:
-            colmap["insurance_mil"] = c
-        elif "damage to property" in cl:
-            colmap["property_damage_mil"] = c
-        elif cl.strip() == "total (\u00a3 million)" or cl.strip().startswith("total"):
+        cl = c.lower().strip()
+        for key, phrase in categories:
+            if phrase in cl:
+                colmap[key] = c
+                break
+    for c in df.columns:
+        cl = c.lower().strip()
+        if cl.startswith("total") and c not in colmap.values():
             colmap["total_mil"] = c
+            break
     out = pd.DataFrame({
         "collision_year": df["Collision data year"].astype(int),
         "price_year": df["Price year"].astype(int),
@@ -418,7 +436,13 @@ def _load_df(cur, df: pd.DataFrame, table: str) -> int:
     cols = list(df.columns)
     placeholders = ", ".join(["%s"] * len(cols))
     colsql = ", ".join(cols)
-    rows = df.where(pd.notna(df), None).itertuples(index=False, name=None)
+    # astype(object) first so that None survives: on a float64 column,
+    # df.where(pd.notna(df), None) silently casts None back to NaN, and
+    # psycopg2 then sends float('nan') which PostgreSQL stores as NaN::numeric.
+    # Power BI's connector maps NUMERIC -> .NET Decimal, which cannot hold NaN
+    # ("Numeric NaN not supported by System.Decimal"). Converting NaN -> None
+    # makes psycopg2 send SQL NULL instead.
+    rows = df.astype(object).where(pd.notna(df), None).itertuples(index=False, name=None)
     psycopg2.extras.execute_values(
         cur,
         f"INSERT INTO {table} ({colsql}) VALUES %s ON CONFLICT DO NOTHING",
@@ -430,8 +454,19 @@ def _load_df(cur, df: pd.DataFrame, table: str) -> int:
 
 
 def main() -> None:
-    os.chdir(EXPOSURE_DIR)
-    conn = psycopg2.connect(DSN)
+    global _DATA_DIR
+    parser = argparse.ArgumentParser(
+        description="Load DfT exposure tables into the road_safety warehouse.")
+    parser.add_argument("--data-dir", default=DEFAULT_DATA_DIR,
+                        help="Directory containing the DfT ODS exposure files "
+                             "(default: data/exposure relative to the repo root)")
+    parser.add_argument("--db-url", required=True,
+                        help="PostgreSQL connection string, e.g. "
+                             "postgresql://user:pass@host:5432/road_safety")
+    args = parser.parse_args()
+
+    _DATA_DIR = os.path.abspath(args.data_dir)
+    conn = psycopg2.connect(args.db_url)
     conn.autocommit = False
     cur = conn.cursor()
 

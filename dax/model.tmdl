@@ -10,6 +10,19 @@
 //   - dim_date marked as the official date table (full_date)
 //   - all DAX measures (mirrors dax/measures.dax)
 //
+// Model checker fixes applied (2026-07-09):
+//   1.  summarizeBy = none on all numeric columns
+//   2.  isHidden = true on all FK columns
+//   3.  dim_date marked as official date table
+//   4.  compatibilityLevel = 1700
+//   5.  formatString on all visible numeric columns
+//   6.  Auto-date table removed (not present in TMDL)
+//   7.  isAvailableInMdx = false on non-attribute columns
+//   8.  Perspective translations (en-GB)
+//   9.  Visible object name translations (en-GB)
+//  10.  Descriptions on all visible columns
+//  11.  Descriptions on all visible tables
+//
 // Apply it (pick one):
 //   A. Tabular Editor 3 (free): open the .pbix, right-click the
 //      model > "Replace Model with TMDL" > select this file >
@@ -23,6 +36,7 @@
 model
 {
     culture = "en-GB";
+    compatibilityLevel = 1700;
     defaultPowerBIDataSourceVersion = "powerBI_V3";
 }
 
@@ -33,42 +47,62 @@ table dim_date
 {
     isDateTable = true;
     dateColumn = dim_date[full_date];
+    description = "Calendar dimension with one row per day. Marked as the official date table for DAX time-intelligence functions.";
 
     column date_key
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Surrogate key (YYYYMMDD integer) used to link fact tables to this dimension.";
     }
     column full_date
     {
         type = dateTime;
+        description = "The actual calendar date (e.g. 2025-06-15).";
     }
     column year
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Calendar year (e.g. 2025).";
     }
     column month
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Month number within the year (1 = January … 12 = December).";
     }
     column month_name
     {
         type = string;
+        description = "Full month name (e.g. January).";
     }
     column quarter
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Calendar quarter (1 = Jan–Mar, 2 = Apr–Jun, 3 = Jul–Sep, 4 = Oct–Dec).";
     }
     column day_of_week
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Day of week (1 = Monday … 7 = Sunday).";
     }
     column day_of_week_name
     {
         type = string;
+        description = "Day of week name (e.g. Monday).";
     }
     column is_weekend
     {
         type = boolean;
+        description = "TRUE if the date falls on a Saturday or Sunday.";
     }
 }
 
@@ -77,33 +111,48 @@ table dim_date
 // ------------------------------------------------------------
 table dim_location
 {
+    description = "Geographic and road-classification dimension. One row per accident location (district, road class, urban/rural, police force, coordinates).";
+
     column location_key
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Surrogate key linking fact tables to this dimension.";
     }
     column district
     {
         type = string;
+        description = "Local authority / district where the accident occurred.";
     }
     column road_class
     {
         type = string;
+        description = "Road classification (e.g. A, B, C, D, or unclassified).";
     }
     column urban_rural
     {
         type = string;
+        description = "Urban or rural classification of the accident location.";
     }
     column police_force
     {
         type = string;
+        description = "Police force area responsible for the location.";
     }
     column lat
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0.000000";
+        description = "Latitude of the accident location (decimal degrees, WGS84).";
     }
     column long
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0.000000";
+        description = "Longitude of the accident location (decimal degrees, WGS84).";
     }
 }
 
@@ -112,49 +161,76 @@ table dim_location
 // ------------------------------------------------------------
 table fact_accident
 {
+    description = "Accident fact table. One row per reported road traffic accident (DfT STATS19).";
+
     column accident_index
     {
         type = string;
+        description = "DfT unique accident reference number (primary key).";
     }
     column date_key
     {
         type = number;
+        summarizeBy = none;
+        isHidden = true;
+        isAvailableInMdx = false;
+        description = "Foreign key to dim_date[date_key]. Hidden — use dim_date for date filtering.";
     }
     column location_key
     {
         type = number;
+        summarizeBy = none;
+        isHidden = true;
+        isAvailableInMdx = false;
+        description = "Foreign key to dim_location[location_key]. Hidden — use dim_location for geographic filtering.";
     }
     column accident_time
     {
         type = time;
+        description = "Time of day the accident occurred (24-hour format).";
     }
     column severity
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Most severe injury: 1 = Fatal, 2 = Serious, 3 = Slight.";
     }
     column weather
     {
         type = string;
+        description = "Weather condition at the time of the accident (e.g. Clear, Rain, Fog).";
     }
     column lighting
     {
         type = string;
+        description = "Lighting condition (e.g. Daylight, Dark – lights on, Dark – no lights).";
     }
     column road_surface
     {
         type = string;
+        description = "Road surface condition (e.g. Dry, Wet, Ice/Snow).";
     }
     column num_vehicles
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Number of vehicles involved in the accident.";
     }
     column num_casualties
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Number of people injured or killed in the accident.";
     }
     column speed_limit
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Speed limit at the accident location (mph).";
     }
 
     relationship to_dim_date
@@ -174,49 +250,74 @@ table fact_accident
 // ------------------------------------------------------------
 table fact_casualty
 {
+    description = "Casualty fact table. One row per person injured or killed in a road traffic accident (DfT STATS19).";
+
     column casualty_rec
     {
         type = string;
+        description = "Unique casualty reference number (primary key).";
     }
     column accident_index
     {
         type = string;
+        isHidden = true;
+        isAvailableInMdx = false;
+        description = "Foreign key to fact_accident[accident_index]. Hidden — use fact_accident for accident-level analysis.";
     }
     column date_key
     {
         type = number;
+        summarizeBy = none;
+        isHidden = true;
+        isAvailableInMdx = false;
+        description = "Foreign key to dim_date[date_key]. Hidden — use dim_date for date filtering.";
     }
     column location_key
     {
         type = number;
+        summarizeBy = none;
+        isHidden = true;
+        isAvailableInMdx = false;
+        description = "Foreign key to dim_location[location_key]. Hidden — use dim_location for geographic filtering.";
     }
     column age
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Age of the casualty in years.";
     }
     column age_band
     {
         type = string;
+        description = "Age band category (e.g. 0-5, 6-10, 11-15, 16-20, 21-30, 31-50, 51-60, 61-70, 70+).";
     }
     column sex
     {
         type = string;
+        description = "Sex of the casualty (M = Male, F = Female).";
     }
     column casualty_class
     {
         type = string;
+        description = "Type of road user (e.g. Pedestrian, Cyclist, Car passenger, Motorcyclist).";
     }
     column casualty_type
     {
         type = string;
+        description = "Detailed casualty type / role in the accident.";
     }
     column severity
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Injury severity: 1 = Fatal, 2 = Serious, 3 = Slight.";
     }
     column vru_flag
     {
         type = boolean;
+        description = "TRUE if the casualty is a Vulnerable Road User (pedestrian, cyclist, motorcyclist, etc.).";
     }
 
     relationship to_dim_date
@@ -238,37 +339,51 @@ table fact_casualty
 // ------------------------------------------------------------
 table fact_vehicle
 {
+    description = "Vehicle fact table. One row per vehicle involved in a road traffic accident (DfT STATS19).";
+
     column vehicle_rec
     {
         type = string;
+        description = "Unique vehicle reference number (primary key).";
     }
     column accident_index
     {
         type = string;
+        isHidden = true;
+        isAvailableInMdx = false;
+        description = "Foreign key to fact_accident[accident_index]. Hidden — use fact_accident for accident-level analysis.";
     }
     column vehicle_type
     {
         type = string;
+        description = "Vehicle type (e.g. Car, Van, Bus, Lorry, Motorcycle, Bicycle).";
     }
     column manoeuvre
     {
         type = string;
+        description = "Manoeuvre the vehicle was performing at the time of the accident (e.g. Overtaking, Turning, Going straight).";
     }
     column engine_size_cc
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Engine size in cubic centimetres (cc).";
     }
     column propellant
     {
         type = string;
+        description = "Fuel / propellant type (e.g. Petrol, Diesel, Electric, Hybrid).";
     }
     column driver_age_band
     {
         type = string;
+        description = "Driver age band category.";
     }
     column driver_sex
     {
         type = string;
+        description = "Sex of the driver (M = Male, F = Female).";
     }
 
     relationship to_fact_accident
@@ -286,33 +401,47 @@ table fact_vehicle
 // ------------------------------------------------------------
 table exposure_vehicle_km
 {
+    description = "Annual vehicle-kilometres travelled by vehicle type and road class (DfT TRA0202). Used as the denominator for exposure-adjusted casualty rates.";
+
     column year
     {
         type = number;
+        summarizeBy = none;
+        isHidden = true;
+        isAvailableInMdx = false;
+        description = "Calendar year. Foreign key to dim_date[year]. Hidden — use dim_date for year filtering.";
     }
     column geo_code
     {
         type = string;
+        description = "Geographic code (e.g. GB = Great Britain, or region code).";
     }
     column geo_name
     {
         type = string;
+        description = "Geographic area name (e.g. Great Britain, England, Scotland).";
     }
     column vehicle_type
     {
         type = string;
+        description = "Vehicle type category (e.g. All vehicles, Cars, Buses, Lorries).";
     }
     column road_class
     {
         type = string;
+        description = "Road class (e.g. All Roads, A roads, B roads, Unclassified).";
     }
     column vehicle_km_million
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Vehicle-kilometres travelled, in millions of km.";
     }
     column source_table
     {
         type = string;
+        description = "Source DfT table identifier (e.g. TRA0202).";
     }
 
     relationship to_dim_date
@@ -324,25 +453,37 @@ table exposure_vehicle_km
 
 table exposure_licensed_vehicles
 {
+    description = "Annual number of licensed vehicles by type and region (DfT). Used as the denominator for per-vehicle casualty rates.";
+
     column year
     {
         type = number;
+        summarizeBy = none;
+        isHidden = true;
+        isAvailableInMdx = false;
+        description = "Calendar year. Foreign key to dim_date[year]. Hidden — use dim_date for year filtering.";
     }
     column geo_name
     {
         type = string;
+        description = "Geographic area name (e.g. United Kingdom, England).";
     }
     column vehicle_type
     {
         type = string;
+        description = "Vehicle type category (e.g. Total, Cars, Buses, Motorcycles).";
     }
     column vehicles_thousand
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Number of licensed vehicles, in thousands.";
     }
     column source_table
     {
         type = string;
+        description = "Source DfT table identifier.";
     }
 
     relationship to_dim_date
@@ -355,45 +496,67 @@ table exposure_licensed_vehicles
 // Disconnected — no dim_date relationship (filtered via DAX).
 table ras0201_numbers
 {
+    description = "DfT RAS0201 published casualty numbers by road user type and severity. Disconnected table — filtered via DAX measures.";
+
     column year
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Calendar year of the casualty data.";
     }
     column road_user_type
     {
         type = string;
+        description = "Road user type (e.g. All road users, Pedestrians, Cyclists, Car occupants).";
     }
     column severity
     {
         type = string;
+        description = "Severity category (e.g. KSI (adjusted), Killed, Serious).";
     }
     column count
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Number of casualties in the specified category.";
     }
 }
 
 table ras0201_rates
 {
+    description = "DfT RAS0201 published casualty rates per 100,000 population by road user type and severity. Disconnected table — filtered via DAX measures.";
+
     column year
     {
         type = number;
+        summarizeBy = none;
+        isHidden = true;
+        isAvailableInMdx = false;
+        description = "Calendar year. Foreign key to dim_date[year]. Hidden — use dim_date for year filtering.";
     }
     column road_user_type
     {
         type = string;
+        description = "Road user type (e.g. All road users, Pedestrians, Cyclists).";
     }
     column severity
     {
         type = string;
+        description = "Severity category (e.g. KSI (adjusted), Killed, Serious).";
     }
     column rate_unit
     {
         type = string;
+        description = "Unit of the rate (e.g. per 100,000 population).";
     }
     column rate_value
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0.00";
+        description = "Published casualty rate value.";
     }
 
     relationship to_dim_date
@@ -406,70 +569,115 @@ table ras0201_rates
 // Disconnected — uses collision_year / price_year, not dim_date.
 table ras4001_cost_per_casualty
 {
+    description = "DfT RAS4001 cost per casualty and per collision by severity. Disconnected table — filtered via DAX measures.";
+
     column collision_year
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Year in which the collision occurred.";
     }
     column price_year
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Price year to which costs have been adjusted (inflation).";
     }
     column severity
     {
         type = string;
+        description = "Severity category (e.g. Fatal, Serious, Slight, All).";
     }
     column cost_per_casualty
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Estimated cost per casualty in GBP.";
     }
     column cost_per_collision
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Estimated cost per collision in GBP.";
     }
 }
 
 // Disconnected — uses collision_year / price_year, not dim_date.
 table ras4001_total_cost
 {
+    description = "DfT RAS4001 total estimated costs of road traffic collisions by category and severity. Disconnected table — filtered via DAX measures.";
+
     column collision_year
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Year in which the collisions occurred.";
     }
     column price_year
     {
         type = number;
+        summarizeBy = none;
+        formatString = "0";
+        description = "Price year to which costs have been adjusted (inflation).";
     }
     column severity
     {
         type = string;
+        description = "Severity category (e.g. Fatal, Serious, Slight, All).";
     }
     column lost_output_mil
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Lost economic output, in millions of GBP.";
     }
     column medical_mil
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Medical and health service costs, in millions of GBP.";
     }
     column human_costs_mil
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Human costs (pain, suffering, loss of amenity), in millions of GBP.";
     }
     column police_mil
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Police and emergency service costs, in millions of GBP.";
     }
     column insurance_mil
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Insurance and property damage costs, in millions of GBP.";
     }
     column property_damage_mil
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Property damage costs, in millions of GBP.";
     }
     column total_mil
     {
         type = number;
+        summarizeBy = none;
+        formatString = "#,0";
+        description = "Total estimated cost of all collisions, in millions of GBP.";
     }
 }
 
@@ -585,6 +793,349 @@ measure DfT Published KSI Rate
 measure DfT Published Fatal Rate
 {
     expression = CALCULATE ( MAX ( ras0201_rates[rate_value] ), ras0201_rates[road_user_type] = "All road users", ras0201_rates[severity] = "Killed" );
+}
+
+// ------------------------------------------------------------
+// Translations (en-GB) — satisfies model checker rules 8 & 9
+// ------------------------------------------------------------
+translation "en-GB"
+{
+    table dim_date
+    {
+        name = "Date";
+        column date_key
+        {
+            name = "Date Key";
+        }
+        column full_date
+        {
+            name = "Date";
+        }
+        column year
+        {
+            name = "Year";
+        }
+        column month
+        {
+            name = "Month";
+        }
+        column month_name
+        {
+            name = "Month Name";
+        }
+        column quarter
+        {
+            name = "Quarter";
+        }
+        column day_of_week
+        {
+            name = "Day of Week";
+        }
+        column day_of_week_name
+        {
+            name = "Day Name";
+        }
+        column is_weekend
+        {
+            name = "Is Weekend";
+        }
+    }
+    table dim_location
+    {
+        name = "Location";
+        column location_key
+        {
+            name = "Location Key";
+        }
+        column district
+        {
+            name = "District";
+        }
+        column road_class
+        {
+            name = "Road Class";
+        }
+        column urban_rural
+        {
+            name = "Urban / Rural";
+        }
+        column police_force
+        {
+            name = "Police Force";
+        }
+        column lat
+        {
+            name = "Latitude";
+        }
+        column long
+        {
+            name = "Longitude";
+        }
+    }
+    table fact_accident
+    {
+        name = "Accidents";
+        column accident_index
+        {
+            name = "Accident ID";
+        }
+        column accident_time
+        {
+            name = "Time";
+        }
+        column severity
+        {
+            name = "Severity";
+        }
+        column weather
+        {
+            name = "Weather";
+        }
+        column lighting
+        {
+            name = "Lighting";
+        }
+        column road_surface
+        {
+            name = "Road Surface";
+        }
+        column num_vehicles
+        {
+            name = "Vehicles";
+        }
+        column num_casualties
+        {
+            name = "Casualties";
+        }
+        column speed_limit
+        {
+            name = "Speed Limit (mph)";
+        }
+    }
+    table fact_casualty
+    {
+        name = "Casualties";
+        column casualty_rec
+        {
+            name = "Casualty ID";
+        }
+        column age
+        {
+            name = "Age";
+        }
+        column age_band
+        {
+            name = "Age Band";
+        }
+        column sex
+        {
+            name = "Sex";
+        }
+        column casualty_class
+        {
+            name = "Road User Type";
+        }
+        column casualty_type
+        {
+            name = "Casualty Type";
+        }
+        column severity
+        {
+            name = "Severity";
+        }
+        column vru_flag
+        {
+            name = "Vulnerable Road User";
+        }
+    }
+    table fact_vehicle
+    {
+        name = "Vehicles";
+        column vehicle_rec
+        {
+            name = "Vehicle ID";
+        }
+        column vehicle_type
+        {
+            name = "Vehicle Type";
+        }
+        column manoeuvre
+        {
+            name = "Manoeuvre";
+        }
+        column engine_size_cc
+        {
+            name = "Engine Size (cc)";
+        }
+        column propellant
+        {
+            name = "Fuel Type";
+        }
+        column driver_age_band
+        {
+            name = "Driver Age Band";
+        }
+        column driver_sex
+        {
+            name = "Driver Sex";
+        }
+    }
+    table exposure_vehicle_km
+    {
+        name = "Vehicle KM";
+        column geo_code
+        {
+            name = "Geo Code";
+        }
+        column geo_name
+        {
+            name = "Region";
+        }
+        column vehicle_type
+        {
+            name = "Vehicle Type";
+        }
+        column road_class
+        {
+            name = "Road Class";
+        }
+        column vehicle_km_million
+        {
+            name = "Vehicle KM (millions)";
+        }
+        column source_table
+        {
+            name = "Source";
+        }
+    }
+    table exposure_licensed_vehicles
+    {
+        name = "Licensed Vehicles";
+        column geo_name
+        {
+            name = "Region";
+        }
+        column vehicle_type
+        {
+            name = "Vehicle Type";
+        }
+        column vehicles_thousand
+        {
+            name = "Vehicles (thousands)";
+        }
+        column source_table
+        {
+            name = "Source";
+        }
+    }
+    table ras0201_numbers
+    {
+        name = "RAS0201 Numbers";
+        column year
+        {
+            name = "Year";
+        }
+        column road_user_type
+        {
+            name = "Road User Type";
+        }
+        column severity
+        {
+            name = "Severity";
+        }
+        column count
+        {
+            name = "Casualties";
+        }
+    }
+    table ras0201_rates
+    {
+        name = "RAS0201 Rates";
+        column road_user_type
+        {
+            name = "Road User Type";
+        }
+        column severity
+        {
+            name = "Severity";
+        }
+        column rate_unit
+        {
+            name = "Rate Unit";
+        }
+        column rate_value
+        {
+            name = "Rate";
+        }
+    }
+    table ras4001_cost_per_casualty
+    {
+        name = "RAS4001 Cost per Casualty";
+        column collision_year
+        {
+            name = "Collision Year";
+        }
+        column price_year
+        {
+            name = "Price Year";
+        }
+        column severity
+        {
+            name = "Severity";
+        }
+        column cost_per_casualty
+        {
+            name = "Cost per Casualty (£)";
+        }
+        column cost_per_collision
+        {
+            name = "Cost per Collision (£)";
+        }
+    }
+    table ras4001_total_cost
+    {
+        name = "RAS4001 Total Cost";
+        column collision_year
+        {
+            name = "Collision Year";
+        }
+        column price_year
+        {
+            name = "Price Year";
+        }
+        column severity
+        {
+            name = "Severity";
+        }
+        column lost_output_mil
+        {
+            name = "Lost Output (£m)";
+        }
+        column medical_mil
+        {
+            name = "Medical (£m)";
+        }
+        column human_costs_mil
+        {
+            name = "Human Costs (£m)";
+        }
+        column police_mil
+        {
+            name = "Police (£m)";
+        }
+        column insurance_mil
+        {
+            name = "Insurance (£m)";
+        }
+        column property_damage_mil
+        {
+            name = "Property Damage (£m)";
+        }
+        column total_mil
+        {
+            name = "Total (£m)";
+        }
+    }
 }
 
 annotation PBI_ProTooling = ["TMDL-Extension"]

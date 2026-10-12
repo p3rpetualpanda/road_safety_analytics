@@ -37,7 +37,9 @@ CREATE TABLE dim_date (
 -- ------------------------------------------------------------
 -- dim_location: geographic / road dimension
 -- One row per unique (district, road_class, urban_rural,
--- police_force, lat, long) combination.
+-- police_force) combination. lat/long are representative
+-- (first-seen) coordinates for that combination, NOT part of
+-- the key — the same combination can occur at many coordinates.
 -- ------------------------------------------------------------
 CREATE TABLE dim_location (
     location_key     INT          PRIMARY KEY,
@@ -103,6 +105,9 @@ CREATE TABLE fact_vehicle (
 -- ------------------------------------------------------------
 -- Indexes for common analytical patterns
 -- ------------------------------------------------------------
+-- Enforce the dim_location grain: one row per key combination.
+CREATE UNIQUE INDEX idx_dim_location_unique
+    ON dim_location(district, road_class, urban_rural, police_force);
 CREATE INDEX idx_fact_accident_date      ON fact_accident(date_key);
 CREATE INDEX idx_fact_accident_location  ON fact_accident(location_key);
 CREATE INDEX idx_fact_accident_severity  ON fact_accident(severity);
@@ -110,5 +115,6 @@ CREATE INDEX idx_fact_casualty_date      ON fact_casualty(date_key);
 CREATE INDEX idx_fact_casualty_location  ON fact_casualty(location_key);
 CREATE INDEX idx_fact_casualty_severity  ON fact_casualty(severity);
 CREATE INDEX idx_fact_casualty_vru       ON fact_casualty(vru_flag);
+CREATE INDEX idx_fact_casualty_accident  ON fact_casualty(accident_index);
 CREATE INDEX idx_fact_vehicle_accident   ON fact_vehicle(accident_index);
 CREATE INDEX idx_fact_vehicle_type       ON fact_vehicle(vehicle_type);
