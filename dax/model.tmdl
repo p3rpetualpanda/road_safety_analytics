@@ -739,7 +739,7 @@ measure Serious Fatal YoY %
 
 measure Serious Fatal 3yr Avg
 {
-    expression = VAR MaxDate = MAX ( dim_date[full_date] ) VAR MinDate = DATEADD ( MaxDate, -2, YEAR ) RETURN DIVIDE ( CALCULATE ( [Serious Fatal Casualties], DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate ) ), 3, 0 );
+    expression = VAR MaxDate = MAX ( dim_date[full_date] ) VAR MinDate = EDATE ( MaxDate, -36 ) + 1 RETURN DIVIDE ( CALCULATE ( [Serious Fatal Casualties], DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate ) ), 3, 0 );
 }
 
 measure Serious Fatal MA 12m

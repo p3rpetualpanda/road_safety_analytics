@@ -95,7 +95,7 @@ DIVIDE (
 // direction of travel without single-year noise.
 Serious Fatal 3yr Avg =
 VAR MaxDate = MAX ( dim_date[full_date] )
-VAR MinDate = DATEADD ( MaxDate, -2, YEAR )
+VAR MinDate = EDATE ( MaxDate, -36 ) + 1
 RETURN
     DIVIDE (
         CALCULATE (
