@@ -720,8 +720,9 @@ measure VRU Serious Fatal Share
 }
 
 // Time intelligence — requires dim_date marked as the official
-// date table (done above). With the single-year 2025 extract,
-// LY / YoY measures return blank/0 (no prior-year rows).
+// date table (done above). The 2021-2025 extract spans five years,
+// so LY / YoY are active from 2022; the 3yr and 12m averages are
+// blank until their window is fully covered by data.
 measure Serious Fatal Casualties LY
 {
     expression = CALCULATE ( [Serious Fatal Casualties], DATEADD ( dim_date[full_date], -1, YEAR ) );
@@ -739,12 +740,12 @@ measure Serious Fatal YoY %
 
 measure Serious Fatal 3yr Avg
 {
-    expression = VAR MaxDate = MAX ( dim_date[full_date] ) VAR MinDate = EDATE ( MaxDate, -36 ) + 1 RETURN DIVIDE ( CALCULATE ( [Serious Fatal Casualties], DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate ) ), 3, 0 );
+    expression = VAR MaxDate = MAX ( dim_date[full_date] ) VAR MinDate = EDATE ( MaxDate, -36 ) + 1 VAR FirstDate = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) ) RETURN IF ( MinDate < FirstDate, BLANK (), DIVIDE ( CALCULATE ( [Serious Fatal Casualties], DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate ) ), 3, 0 ) );
 }
 
 measure Serious Fatal MA 12m
 {
-    expression = CALCULATE ( [Serious Fatal Casualties], DATESINPERIOD ( dim_date[full_date], MAX ( dim_date[full_date] ), -12, MONTH ) ) / 12;
+    expression = VAR MaxDate = MAX ( dim_date[full_date] ) VAR FirstDate = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) ) RETURN IF ( EDATE ( MaxDate, -12 ) + 1 < FirstDate, BLANK (), CALCULATE ( [Serious Fatal Casualties], DATESINPERIOD ( dim_date[full_date], MaxDate, -12, MONTH ) ) / 12 );
 }
 
 measure Seasonality Index

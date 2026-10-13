@@ -41,7 +41,7 @@ road_safety_analytics/
 │   └── load_exposure.py      <- Phase B: ODS exposure data -> warehouse
 ├── tests/
 │   ├── conftest.py           <- path setup + DB-driver stub (tests run without a DB)
-│   ├── test_cleaning.py      <- 36 tests for the cleaning/transform layer
+│   ├── test_cleaning.py      <- 39 tests for the cleaning/transform layer
 │   └── test_exposure_helpers.py  <- 20 tests for the Phase B parsing helpers
 ├── dax/
 │   ├── measures.dax          <- Power BI DAX measures (21 measures incl. Phase B rates)
@@ -132,7 +132,7 @@ DB driver, so the suite runs anywhere pandas does):
 make test                 # or: python -m pytest tests/ -q
 ```
 
-- **56 tests** — `tests/test_cleaning.py` covers severity, age bands, time
+- **59 tests** — `tests/test_cleaning.py` covers severity, age bands, time
   parsing (new + legacy spec), coordinates, VRU flagging, code decoding and
   row serialisation; `tests/test_exposure_helpers.py` covers the Phase B ODS
   parsing helpers (year detection, unit conversion, melt orientations).
@@ -149,7 +149,7 @@ make test                 # or: python -m pytest tests/ -q
 | Data quality & governance | `docs/data_quality.md` — decision log, code-stability audit, OGL citation |
 | Performance engineering | `docs/performance.md` — EXPLAIN ANALYZE, index design, work_mem tuning |
 | DAX / Power BI | `dax/measures.dax`, `dax/model.tmdl` — 21 measures, 11-table versionable TMDL model |
-| Testing & CI | `tests/` (56 tests), `make check`, GitHub Actions workflow |
+| Testing & CI | `tests/` (59 tests), `make check`, GitHub Actions workflow |
 | Documentation | `docs/report.md`, `docs/presentation.md`, this README |
 
 ## Data source & licence
@@ -181,7 +181,7 @@ documented with `EXPLAIN ANALYZE` evidence (`docs/performance.md`), and the
 | 3 | SQL analytics — BQ1–BQ14 | ✅ Complete (all 14 validated) |
 | 4 | Power BI report (model, DAX, 5 pages) | ✅ Complete (report built, 21 measures) |
 | 5 | Insights & recommendations | ✅ Complete (8 insights in `docs/report.md`) |
-| 6 | Documentation, testing & presentation | ✅ Complete (56 tests passing, CI on every push/PR, report finalised, `docs/performance.md`, `docs/presentation.md`) |
+| 6 | Documentation, testing & presentation | ✅ Complete (59 tests passing, CI on every push/PR, report finalised, `docs/performance.md`, `docs/presentation.md`) |
 | A | Multi-year expansion (2021–2025) | ✅ Complete (5-year ETL, BQ9–BQ11, 3 new DAX measures) |
 | B | Exposure-adjusted rates (TRA, VEH, RAS) | ✅ Complete (exposure ETL, BQ12–BQ14, 5 new DAX measures) |
 
@@ -211,7 +211,7 @@ for sanity before it is marked validated.
 
 - **2025 `local_authority_district` is 100% `-1`** (unknown). District
   attribution therefore uses `local_authority_ons_district` (ONS codes),
-  which resolved `dim_location` from 396 → 2,492 rows and restored real
+  which resolved `dim_location` from 396 → 2,492 rows (2025-only extract; 2,901 on the full 2021–2025 load) and restored real
   district-level analysis for BQ2/BQ6.
 - **BQ4 age bands aligned** — casualties and drivers are mapped onto a grid
   whose edges match the DfT driver bands (0-15, 16-25, 26-35, 36-45, 46+), so
