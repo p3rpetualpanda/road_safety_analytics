@@ -1,0 +1,292 @@
+// Tabular Editor 3 DAX script: File > Open this file (or paste into File > New > DAX Script), F5 to apply, Ctrl+S to save to Power BI.
+// Generated from dax/measures.dax; edit that file and regenerate rather than editing this one.
+// ============================================================
+// Road Safety Analytics — Power BI DAX measures
+// ============================================================
+// Add these to a calculated table or to the relevant fact tables
+// in Power BI Desktop (Modeling > New measure).
+//
+// Conventions:
+//   - Measures live on the fact tables they aggregate.
+//   - Use the dim_date table for time intelligence.
+//   - "Serious+Fatal" = severity IN {1, 2}.
+// ============================================================
+
+// ------------------------------------------------------------
+// fact_accident measures
+// ------------------------------------------------------------
+MEASURE 'fact_accident'[Total Accidents] =
+COUNTROWS ( fact_accident )
+
+// ------------------------------------------------------------
+// fact_casualty measures
+// ------------------------------------------------------------
+MEASURE 'fact_casualty'[Total Casualties] =
+COUNTROWS ( fact_casualty )
+
+MEASURE 'fact_casualty'[Serious Fatal Casualties] =
+CALCULATE (
+    COUNTROWS ( fact_casualty ),
+    fact_casualty[severity] IN { 1, 2 }
+)
+
+MEASURE 'fact_casualty'[Serious Fatal Share] =
+DIVIDE (
+    [Serious Fatal Casualties],
+    [Total Casualties],
+    0
+)
+
+// Casualties per 100 accidents (severity-adjusted rate)
+MEASURE 'fact_casualty'[Casualties Per 100 Accidents] =
+DIVIDE (
+    [Total Casualties] * 100,
+    [Total Accidents],
+    0
+)
+
+// Vulnerable road user share of all casualties
+MEASURE 'fact_casualty'[VRU Share] =
+DIVIDE (
+    CALCULATE (
+        COUNTROWS ( fact_casualty ),
+        fact_casualty[vru_flag] = TRUE
+    ),
+    [Total Casualties],
+    0
+)
+
+// VRU share of serious/fatal casualties only
+MEASURE 'fact_casualty'[VRU Serious Fatal Share] =
+DIVIDE (
+    CALCULATE (
+        COUNTROWS ( fact_casualty ),
+        fact_casualty[vru_flag] = TRUE,
+        fact_casualty[severity] IN { 1, 2 }
+    ),
+    [Serious Fatal Casualties],
+    0
+)
+
+// ------------------------------------------------------------
+// Time intelligence
+// Requires: dim_date marked as the official date table in Power BI
+//   (Modeling > Date table > Mark as date table, using full_date).
+// The 2021-2025 extract now spans five years, so the LY / YoY /
+// moving-average measures below are fully active.
+// ------------------------------------------------------------
+MEASURE 'fact_casualty'[Serious Fatal Casualties LY] =
+CALCULATE (
+    [Serious Fatal Casualties],
+    DATEADD ( dim_date[full_date], -1, YEAR )
+)
+
+MEASURE 'fact_casualty'[Serious Fatal YoY Change] =
+[Serious Fatal Casualties] - [Serious Fatal Casualties LY]
+
+MEASURE 'fact_casualty'[Serious Fatal YoY %] =
+DIVIDE (
+    [Serious Fatal YoY Change],
+    [Serious Fatal Casualties LY],
+    0
+)
+
+// 3-year rolling average of serious+fatal casualties (trailing 36 months).
+// Total over the trailing 3-year window divided by 3 = average annual total.
+// Useful for smoothing the annual trend line to expose the underlying
+// direction of travel without single-year noise.
+// Blank until a full 36 months of data exist (2023 onwards): dividing a
+// partial window by 3 would draw a fake rising trend for 2021-2022.
+MEASURE 'fact_casualty'[Serious Fatal 3yr Avg] =
+VAR MaxDate = MAX ( dim_date[full_date] )
+VAR MinDate = EDATE ( MaxDate, -36 ) + 1
+VAR DataStart = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) )
+RETURN
+    IF (
+        MinDate < DataStart,
+        BLANK (),
+        DIVIDE (
+            CALCULATE (
+                [Serious Fatal Casualties],
+                DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate )
+            ),
+            3,
+            0
+        )
+    )
+
+// 12-month moving average of serious+fatal casualties (trailing 12 calendar
+// months). Mirrors BQ9's serious_fatal_ma_12m for the Power BI trend visual.
+// Blank until a full 12 months of data exist (same reason as the 3yr average).
+MEASURE 'fact_casualty'[Serious Fatal MA 12m] =
+VAR MaxDate = MAX ( dim_date[full_date] )
+VAR DataStart = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) )
+RETURN
+    IF (
+        EDATE ( MaxDate, -12 ) + 1 < DataStart,
+        BLANK (),
+        CALCULATE (
+            [Serious Fatal Casualties],
+            DATESINPERIOD ( dim_date[full_date], MaxDate, -12, MONTH )
+        ) / 12
+    )
+
+// Seasonality index: the month's serious+fatal count as a % of the
+// average month (100 = exactly average). Mirrors BQ10's seasonality_index.
+// Use with a month axis; values >100 are above-average months.
+MEASURE 'fact_casualty'[Seasonality Index] =
+VAR MonthCount = [Serious Fatal Casualties]
+VAR AvgMonth = DIVIDE (
+    CALCULATE ( [Serious Fatal Casualties], REMOVEFILTERS ( dim_date[month] ) ),
+    12,
+    0
+)
+RETURN
+    DIVIDE ( MonthCount, AvgMonth, 0 ) * 100
+
+// ------------------------------------------------------------
+// Top-N helper (use with a TOPN visual or a calculated table)
+// ------------------------------------------------------------
+// Serious-injury rate per district (for a ranking visual)
+MEASURE 'fact_casualty'[Serious Per Accident by District] =
+DIVIDE (
+    [Serious Fatal Casualties],
+    [Total Accidents],
+    0
+)
+
+// ------------------------------------------------------------
+// Visual-specific measures
+//
+// These exist because of how Power BI filter direction works: a measure
+// only responds to filters on the table it counts (or tables whose filter
+// flows INTO that table). So the "right" measure depends on which table the
+// filter column lives in:
+//   - vehicle_type / manoeuvre live in fact_vehicle  -> count fact_vehicle
+//   - weather / lighting live in fact_accident        -> count fact_accident
+// ------------------------------------------------------------
+
+// Vehicles involved in accidents (for the vehicle_type & manoeuvre visuals).
+// COUNTROWS(fact_accident) would NOT respond to vehicle_type/manoeuvre
+// filters because those columns live in fact_vehicle, not fact_accident.
+MEASURE 'fact_vehicle'[Vehicles Involved] =
+COUNTROWS ( fact_vehicle )
+
+// Serious/fatal ACCIDENTS (for the weather & lighting visuals).
+// Weather and lighting are recorded per accident, so counting the accidents
+// that were serious/fatal is the correct semantics. COUNTROWS(fact_casualty)
+// would NOT respond to these filters because they live in fact_accident.
+MEASURE 'fact_accident'[Serious Fatal Accidents] =
+CALCULATE (
+    COUNTROWS ( fact_accident ),
+    fact_accident[severity] IN { 1, 2 }
+)
+
+// ============================================================
+// Phase B — Exposure-adjusted rate measures
+// ============================================================
+// Requires the following tables in the Power BI model:
+//   - exposure_vehicle_km       (year, geo_code, geo_name,
+//                                vehicle_type, road_class,
+//                                vehicle_km_million, source_table)
+//   - exposure_licensed_vehicles(year, geo_name, vehicle_type,
+//                                vehicles_thousand, source_table)
+//   - ras0201_rates             (year, road_user_type, severity,
+//                                rate_unit, rate_value)
+//
+// Required relationships (single direction, dim_date → exposure):
+//   dim_date[year]  1:*  exposure_vehicle_km[year]
+//   dim_date[year]  1:*  exposure_licensed_vehicles[year]
+//   dim_date[year]  1:*  ras0201_rates[year]
+//
+// All three exposure tables use dim_date[year] as the join key.
+// The relationship direction is dim_date → exposure (single),
+// so date filters flow into the exposure tables automatically.
+// ============================================================
+
+// ------------------------------------------------------------
+// National S/F rate per 100M vehicle-km (all roads)
+// Mirrors BQ12 "All Roads" row. Responds to date filter.
+// ------------------------------------------------------------
+MEASURE 'exposure_vehicle_km'[SF Per 100M Vehicle KM] =
+VAR SF = [Serious Fatal Casualties]
+VAR KM =
+    CALCULATE (
+        SUM ( exposure_vehicle_km[vehicle_km_million] ),
+        exposure_vehicle_km[source_table] = "TRA0202",
+        exposure_vehicle_km[geo_code] = "GB",
+        exposure_vehicle_km[road_class] = "All Roads"
+    )
+RETURN
+    DIVIDE ( SF * 100, KM, 0 )
+
+// ------------------------------------------------------------
+// S/F rate per 100M vehicle-km by road class
+// Mirrors BQ12. Use with exposure_vehicle_km[road_class] on the axis.
+// Each class's own S/F casualties (from dim_location road class +
+// urban/rural) over that class's TRA0202 km. Blank unless exactly one
+// road class is in context, so subtotal rows are never summed.
+// ------------------------------------------------------------
+MEASURE 'exposure_vehicle_km'[SF Per 100M Vehicle KM by Road Class] =
+VAR Label = SELECTEDVALUE ( exposure_vehicle_km[road_class] )
+-- TRA0202 labels carry "[note N]" suffixes; compare on the prefix
+VAR Cls =
+    IF ( CONTAINSSTRING ( Label, " [note" ), LEFT ( Label, SEARCH ( " [note", Label ) - 1 ), Label )
+VAR Minor = { "B", "C", "Unclassified" }
+VAR SF =
+    SWITCH (
+        Cls,
+        "All Roads", [Serious Fatal Casualties],
+        "All Major Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN { "Motorway", "A(M)", "A" } ),
+        "Major Roads: Motorway", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN { "Motorway", "A(M)" } ),
+        "Major Roads: All 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A" ),
+        "Major Roads: Rural 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A", dim_location[urban_rural] = "Rural" ),
+        "Major Roads: Urban 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A", dim_location[urban_rural] = "Urban" ),
+        "All Minor Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor ),
+        "Minor Roads: Rural", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor, dim_location[urban_rural] = "Rural" ),
+        "Minor Roads: Urban", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor, dim_location[urban_rural] = "Urban" )
+    )
+VAR KM =
+    CALCULATE (
+        SUM ( exposure_vehicle_km[vehicle_km_million] ),
+        exposure_vehicle_km[source_table] = "TRA0202",
+        exposure_vehicle_km[geo_code] = "GB"
+    )
+RETURN
+    DIVIDE ( SF * 100, KM )
+
+// ------------------------------------------------------------
+// National S/F rate per 100k licensed vehicles (GB: STATS19 excludes NI)
+// Mirrors BQ13. Responds to date filter.
+// ------------------------------------------------------------
+MEASURE 'exposure_licensed_vehicles'[SF Per 100K Vehicles] =
+VAR SF = [Serious Fatal Casualties]
+VAR VEH =
+    CALCULATE (
+        SUM ( exposure_licensed_vehicles[vehicles_thousand] ),
+        exposure_licensed_vehicles[geo_name] = "Great Britain",
+        exposure_licensed_vehicles[vehicle_type] = "Total"
+    )
+RETURN
+    DIVIDE ( SF * 100000, VEH * 1000, 0 )
+
+// ------------------------------------------------------------
+// DfT published KSI rate (per billion vehicle miles)
+// From RAS0201 Rates sheet — DfT's own published casualty rates.
+// Use for validation against our calculated rates.
+// Note: DfT uses MILES, not km. 1 mile = 1.609344 km.
+// ------------------------------------------------------------
+MEASURE 'ras0201_rates'[DfT Published KSI Rate] =
+CALCULATE (
+    MAX ( ras0201_rates[rate_value] ),
+    ras0201_rates[road_user_type] = "All road users",
+    ras0201_rates[severity] = "KSI (adjusted)"
+)
+
+// DfT published fatal rate (per billion vehicle miles)
+MEASURE 'ras0201_rates'[DfT Published Fatal Rate] =
+CALCULATE (
+    MAX ( ras0201_rates[rate_value] ),
+    ras0201_rates[road_user_type] = "All road users",
+    ras0201_rates[severity] = "Killed"
+)

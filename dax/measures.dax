@@ -98,10 +98,10 @@ DIVIDE (
 Serious Fatal 3yr Avg =
 VAR MaxDate = MAX ( dim_date[full_date] )
 VAR MinDate = EDATE ( MaxDate, -36 ) + 1
-VAR FirstDate = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) )
+VAR DataStart = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) )
 RETURN
     IF (
-        MinDate < FirstDate,
+        MinDate < DataStart,
         BLANK (),
         DIVIDE (
             CALCULATE (
@@ -118,10 +118,10 @@ RETURN
 // Blank until a full 12 months of data exist (same reason as the 3yr average).
 Serious Fatal MA 12m =
 VAR MaxDate = MAX ( dim_date[full_date] )
-VAR FirstDate = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) )
+VAR DataStart = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) )
 RETURN
     IF (
-        EDATE ( MaxDate, -12 ) + 1 < FirstDate,
+        EDATE ( MaxDate, -12 ) + 1 < DataStart,
         BLANK (),
         CALCULATE (
             [Serious Fatal Casualties],

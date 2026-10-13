@@ -740,12 +740,12 @@ measure Serious Fatal YoY %
 
 measure Serious Fatal 3yr Avg
 {
-    expression = VAR MaxDate = MAX ( dim_date[full_date] ) VAR MinDate = EDATE ( MaxDate, -36 ) + 1 VAR FirstDate = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) ) RETURN IF ( MinDate < FirstDate, BLANK (), DIVIDE ( CALCULATE ( [Serious Fatal Casualties], DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate ) ), 3, 0 ) );
+    expression = VAR MaxDate = MAX ( dim_date[full_date] ) VAR MinDate = EDATE ( MaxDate, -36 ) + 1 VAR DataStart = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) ) RETURN IF ( MinDate < DataStart, BLANK (), DIVIDE ( CALCULATE ( [Serious Fatal Casualties], DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate ) ), 3, 0 ) );
 }
 
 measure Serious Fatal MA 12m
 {
-    expression = VAR MaxDate = MAX ( dim_date[full_date] ) VAR FirstDate = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) ) RETURN IF ( EDATE ( MaxDate, -12 ) + 1 < FirstDate, BLANK (), CALCULATE ( [Serious Fatal Casualties], DATESINPERIOD ( dim_date[full_date], MaxDate, -12, MONTH ) ) / 12 );
+    expression = VAR MaxDate = MAX ( dim_date[full_date] ) VAR DataStart = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) ) RETURN IF ( EDATE ( MaxDate, -12 ) + 1 < DataStart, BLANK (), CALCULATE ( [Serious Fatal Casualties], DATESINPERIOD ( dim_date[full_date], MaxDate, -12, MONTH ) ) / 12 );
 }
 
 measure Seasonality Index
