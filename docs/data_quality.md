@@ -47,7 +47,7 @@ fix them silently.
 | 14 | `vehicle_type` / `vehicle_manoeuvre` / `propulsion_code` / `age_band_of_driver` | Coded integers | Decoded to labels; unmapped → "Unknown" | `decode_code()` |
 | 15 | `speed_limit` | Now lives in the **accidents** table (was casualties) | Moved to `fact_accident.speed_limit` | `run()` |
 | 16 | `protection`, `driver_impaired` | **No equivalent** in the new spec | Dropped from the warehouse | `schema.sql` |
-| 17 | `local_authority_district` | **100% `-1`** in the 2025 extract (deprecated) — made the district dimension degenerate (all 101,525 accidents → one `-1` row) | Switched the district source to `local_authority_ons_district` (ONS codes: E06=English unitary authorities, E07=English non-metropolitan districts, E08=English metropolitan districts, E09=London boroughs, S12=Scottish council areas, W06=Welsh unitary authorities); `-1` → "Unknown". `dim_location` grew 396 → 2,492 rows. | `run()` (dim_location) |
+| 17 | `local_authority_district` | **100% `-1`** in the 2025 extract (deprecated) — made the district dimension degenerate (all 101,525 accidents → one `-1` row) | Switched the district source to `local_authority_ons_district` (ONS codes: E06=English unitary authorities, E07=English non-metropolitan districts, E08=English metropolitan districts, E09=London boroughs, S12=Scottish council areas, W06=Welsh unitary authorities); `-1` → "Unknown". `dim_location` grew 396 → 2,492 rows (2025-only extract; 2,901 on the full 2021–2025 load). | `run()` (dim_location) |
 
 ## 3. Code-Stability Audit (2021–2025)
 
@@ -287,7 +287,7 @@ ETL run):
 | casualties | 652,821 | 652,821 | 0 | — |
 | vehicles | 937,265 | 937,265 | 0 | — |
 | dim_date | — | 1,826 | — | Derived (one row per day, 2021–2025) |
-| dim_location | — | 2,901 | — | Derived (distinct ONS district codes) |
+| dim_location | — | 2,901 | — | Derived (distinct district × road class × urban/rural × police force) |
 
 Accidents by year (loaded): 2021 = 101,087; 2022 = 106,004;
 2023 = 104,258; 2024 = 100,927; 2025 = 101,525.

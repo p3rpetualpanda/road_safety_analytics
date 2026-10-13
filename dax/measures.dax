@@ -93,27 +93,41 @@ DIVIDE (
 // Total over the trailing 3-year window divided by 3 = average annual total.
 // Useful for smoothing the annual trend line to expose the underlying
 // direction of travel without single-year noise.
+// Blank until a full 36 months of data exist (2023 onwards): dividing a
+// partial window by 3 would draw a fake rising trend for 2021-2022.
 Serious Fatal 3yr Avg =
 VAR MaxDate = MAX ( dim_date[full_date] )
 VAR MinDate = EDATE ( MaxDate, -36 ) + 1
+VAR FirstDate = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) )
 RETURN
-    DIVIDE (
-        CALCULATE (
-            [Serious Fatal Casualties],
-            DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate )
-        ),
-        3,
-        0
+    IF (
+        MinDate < FirstDate,
+        BLANK (),
+        DIVIDE (
+            CALCULATE (
+                [Serious Fatal Casualties],
+                DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate )
+            ),
+            3,
+            0
+        )
     )
 
-// 12-month moving average of serious+fatal casualties (trailing 360 days).
-// Mirrors BQ9's serious_fatal_ma_12m for the Power BI trend visual.
+// 12-month moving average of serious+fatal casualties (trailing 12 calendar
+// months). Mirrors BQ9's serious_fatal_ma_12m for the Power BI trend visual.
+// Blank until a full 12 months of data exist (same reason as the 3yr average).
 Serious Fatal MA 12m =
-CALCULATE (
-    [Serious Fatal Casualties],
-    DATESINPERIOD ( dim_date[full_date], MAX ( dim_date[full_date] ), -12, MONTH )
-)
-/ 12
+VAR MaxDate = MAX ( dim_date[full_date] )
+VAR FirstDate = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) )
+RETURN
+    IF (
+        EDATE ( MaxDate, -12 ) + 1 < FirstDate,
+        BLANK (),
+        CALCULATE (
+            [Serious Fatal Casualties],
+            DATESINPERIOD ( dim_date[full_date], MaxDate, -12, MONTH )
+        ) / 12
+    )
 
 // Seasonality index: the month's serious+fatal count as a % of the
 // average month (100 = exactly average). Mirrors BQ10's seasonality_index.

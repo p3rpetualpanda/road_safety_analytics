@@ -93,7 +93,7 @@ questions with evidence (11 Phase A + 3 Phase B exposure-adjusted).
 | `fact_casualty` | one row per casualty | 652,821 |
 | `fact_vehicle` | one row per vehicle | 937,265 |
 | `dim_date` | one row per day | 1,826 |
-| `dim_location` | one row per district | 2,901 |
+| `dim_location` | one row per district × road class × urban/rural × police force | 2,901 |
 
 - 8 single-directional relationships (3 exposure tables relate to `dim_date[year]`; 3 are disconnected), `dim_date` marked as the date table
 - 9 B-tree indexes on the join/filter columns
@@ -114,7 +114,7 @@ This is where the real analyst work happened. Highlights:
   decoded weather, lighting, road surface, vehicle type, etc. to labels.
 - **Degenerate district** — `local_authority_district` was **100% `-1`** in
   the 2025 extract. Every accident would have collapsed into one district.
-  I switched to the ONS district code → `dim_location` grew 396 → 2,492.
+  I switched to the ONS district code → `dim_location` grew 396 → 2,492 (2025-only extract; 2,901 on the full 2021–2025 load).
 - **Unknown-age codes** — `-1`/0/99/999 mapped to a real "Unknown" band.
 - **Honest "Unknown" buckets** — ~67% of vehicle records have unknown type.
   That's a genuine source gap, not my bug — I verified it and said so.
@@ -252,7 +252,7 @@ not the same as the highest-volume areas.
   quicksort, 832 ms → 763 ms
 - All 14 queries run in **29 ms – 832 ms** — well within interactive limits
 
-**Testing:** 36 pytest cases guard the cleaning rules (age banding, severity,
+**Testing:** 59 pytest cases guard the cleaning rules (age banding, severity,
 VRU flags, coded-field decoding).
 
 > *Speaker note (50s):* "I didn't just make it work — I proved it's sound.
@@ -299,7 +299,7 @@ governed warehouse and a Power BI report that shows a road-safety authority
 
 - 14 business questions answered with validated SQL (11 Phase A + 3 Phase B)
 - 21 DAX measures, 5 report pages, 6 exposure tables
-- 36 tests, EXPLAIN-verified performance, full data-quality log
+- 59 tests, EXPLAIN-verified performance, full data-quality log
 - Reproducible end-to-end from a clean state in < 30 minutes
 
 **Questions?**

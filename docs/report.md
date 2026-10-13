@@ -282,7 +282,7 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 
 ## 6. Limitations
 
-- **District attribution:** The 2025 `local_authority_district` field is 100% `-1` (unknown). District attribution therefore uses `local_authority_ons_district` (ONS codes), which resolved `dim_location` from 396 → 2,492 rows. This is a data-quality issue that should be addressed in future extracts.
+- **District attribution:** The 2025 `local_authority_district` field is 100% `-1` (unknown). District attribution therefore uses `local_authority_ons_district` (ONS codes), which resolved `dim_location` from 396 → 2,492 rows (2025-only extract; 2,901 on the full 2021–2025 load). This is a data-quality issue that should be addressed in future extracts.
 - **Field sparsity:** Some fields (e.g., weather, lighting) have a non-trivial proportion of "Unknown" values, which limits the precision of the analysis.
 - **Exposure data coverage:** TRA8904 covers 186 of 370 districts (England and Wales only; Scotland is included at national level but not at LA level). The raw traffic counts file covers 214 LAs (England/Wales). BQ14 rates are therefore not available for Scottish districts.
 - **Miles vs km:** RAS0201 published rates use **miles** (per billion vehicle miles), while our exposure tables use **kilometres**. A conversion factor of 1.609344 km/mile is needed when comparing. DAX measures `DfT Published KSI Rate` and `DfT Published Fatal Rate` use the DfT's mile-based rates directly.
@@ -324,7 +324,8 @@ The most important finding is that **vulnerable road users collectively account 
   7. Verify: `psql road_safety -c "SELECT COUNT(*) AS accidents FROM fact_accident;"`
   8. Power BI: Follow `docs/power_bi_guide.md`
 - **Environment:**
-  - Python 3.9.13 (WindowsApps)
+  - Python 3.9.13 (WindowsApps) for the original ETL run; the dev/test
+    dependencies (pytest 9.0.3) need Python 3.10+, and CI tests 3.10 and 3.12
   - PostgreSQL 17.11
   - Power BI Desktop (free)
   - pandas 2.3.3

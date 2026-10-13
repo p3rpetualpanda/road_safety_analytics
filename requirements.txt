@@ -2,5 +2,7 @@
 # Pinned for reproducible builds (supply-chain hygiene).
 pandas==2.3.3
 psycopg2-binary==2.9.12
+# Reads the DfT .ods exposure spreadsheets (pd.read_excel engine="odf", Phase B)
+odfpy==1.4.1
 # Optional: for quick cross-checks of SQL results during development
 # numpy>=1.24
