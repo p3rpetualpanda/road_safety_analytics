@@ -65,7 +65,9 @@ CREATE TABLE fact_accident (
     road_surface     TEXT,
     num_vehicles     INT,
     num_casualties   INT,
-    speed_limit      INT          -- mph; now sourced from the accidents table
+    speed_limit      INT,         -- mph; now sourced from the accidents table
+    lat              NUMERIC(9,6),                -- per-accident coordinates (BQ6)
+    long             NUMERIC(9,6)
 );
 
 -- ------------------------------------------------------------

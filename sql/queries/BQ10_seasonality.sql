@@ -2,6 +2,8 @@
 -- BQ10 — Seasonality: month-of-year patterns in casualties,
 --        pooled across all years (2021–2025).
 -- Grain: one row per month (1–12)
+-- seasonality_index is on SERIOUS/FATAL casualties (the business
+-- question); total_casualty_index is the same on all casualties.
 -- Skills: CTE, conditional aggregation, window function
 --         (share of annual total per month)
 -- ============================================================
@@ -33,10 +35,15 @@ SELECT
     ROUND(100.0 * m.total_casualties / NULLIF(t.annual_total, 0), 2) AS share_of_annual_pct,
     -- Index vs the monthly average (100 = exactly average; >100 = above)
     ROUND(
+        100.0 * m.serious_fatal
+            / NULLIF(t.annual_serious_fatal / 12.0, 0),
+        1
+    ) AS seasonality_index,
+    ROUND(
         100.0 * m.total_casualties
             / NULLIF(t.annual_total / 12.0, 0),
         1
-    ) AS seasonality_index
+    ) AS total_casualty_index
 FROM monthly m
 CROSS JOIN totals t
 ORDER BY m.month;

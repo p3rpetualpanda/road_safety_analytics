@@ -35,21 +35,22 @@ class TestCleanSeverity:
 # clean_age
 # ------------------------------------------------------------------
 class TestCleanAge:
-    def test_maps_unknown_codes_to_null(self):
-        out = load.clean_age(pd.Series([-1, 0, 99, 999]))
+    def test_maps_unknown_code_to_null(self):
+        out = load.clean_age(pd.Series([-1]))
         assert out.isna().all()
 
     def test_keeps_real_ages(self):
-        out = load.clean_age(pd.Series([1, 25, 80]))
-        assert out.tolist() == [1, 25, 80]
+        # 0 = under one year old in STATS19; only -1 means unknown
+        out = load.clean_age(pd.Series([0, 1, 25, 80, 99]))
+        assert out.tolist() == [0, 1, 25, 80, 99]
 
     def test_mixed(self):
         out = load.clean_age(pd.Series([25, 99, "40", None, 0, -1]))
         assert out.iloc[0] == 25
-        assert pd.isna(out.iloc[1])
+        assert out.iloc[1] == 99
         assert out.iloc[2] == 40
         assert pd.isna(out.iloc[3])
-        assert pd.isna(out.iloc[4])
+        assert out.iloc[4] == 0
         assert pd.isna(out.iloc[5])
 
 
@@ -211,3 +212,22 @@ class TestDfToRows:
     def test_empty_dataframe(self):
         df = pd.DataFrame({"a": pd.Series(dtype="Int64")})
         assert load.df_to_rows(df) == []
+
+
+# ------------------------------------------------------------------
+# Code tables: pinned to the DfT STATS19 code list (a past mapping
+# mislabelled rain as "Fine with precipitation" and fog as "Rain").
+# ------------------------------------------------------------------
+class TestCodeTables:
+    def test_weather(self):
+        assert load.WEATHER_CONDITIONS[2] == "Raining no high winds"
+        assert load.WEATHER_CONDITIONS[4] == "Fine + high winds"
+        assert load.WEATHER_CONDITIONS[7] == "Fog or mist"
+
+    def test_light_and_surface(self):
+        assert load.LIGHT_CONDITIONS[7] == "Darkness - lighting unknown"
+        assert load.ROAD_SURFACE_CONDITIONS[4] == "Frost or ice"
+        assert load.ROAD_SURFACE_CONDITIONS[5] == "Flood over 3cm deep"
+
+    def test_road_class(self):
+        assert [load.FIRST_ROAD_CLASS[k] for k in range(1, 7)] == ["Motorway", "A(M)", "A", "B", "C", "Unclassified"]

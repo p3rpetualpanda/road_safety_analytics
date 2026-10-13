@@ -526,7 +526,7 @@ table ras0201_numbers
 
 table ras0201_rates
 {
-    description = "DfT RAS0201 published casualty rates per 100,000 population by road user type and severity. Disconnected table — filtered via DAX measures.";
+    description = "DfT RAS0201 published casualty rates by road user type and severity. Connected to dim_date[year] (single-directional), so year filters flow automatically; row selection (road user type / severity / unit) is done via DAX measures.";
 
     column year
     {
@@ -739,7 +739,7 @@ measure Serious Fatal YoY %
 
 measure Serious Fatal 3yr Avg
 {
-    expression = VAR MaxDate = MAX ( dim_date[full_date] ) VAR MinDate = DATEADD ( MaxDate, -2, YEAR ) RETURN DIVIDE ( CALCULATE ( [Serious Fatal Casualties], DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate ) ), 3, 0 );
+    expression = VAR MaxDate = MAX ( dim_date[full_date] ) VAR MinDate = EDATE ( MaxDate, -36 ) + 1 RETURN DIVIDE ( CALCULATE ( [Serious Fatal Casualties], DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate ) ), 3, 0 );
 }
 
 measure Serious Fatal MA 12m
@@ -777,12 +777,12 @@ measure SF Per 100M Vehicle KM
 
 measure SF Per 100M Vehicle KM by Road Class
 {
-    expression = VAR SF = [Serious Fatal Casualties] VAR KM = CALCULATE ( SUM ( exposure_vehicle_km[vehicle_km_million] ), exposure_vehicle_km[source_table] = "TRA0202", exposure_vehicle_km[geo_code] = "GB" ) RETURN DIVIDE ( SF * 100, KM, 0 );
+    expression = VAR Label = SELECTEDVALUE ( exposure_vehicle_km[road_class] ) VAR Cls = IF ( CONTAINSSTRING ( Label, " [note" ), LEFT ( Label, SEARCH ( " [note", Label ) - 1 ), Label ) VAR Minor = { "B", "C", "Unclassified" } VAR SF = SWITCH ( Cls, "All Roads", [Serious Fatal Casualties], "All Major Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN { "Motorway", "A(M)", "A" } ), "Major Roads: Motorway", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN { "Motorway", "A(M)" } ), "Major Roads: All 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A" ), "Major Roads: Rural 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A", dim_location[urban_rural] = "Rural" ), "Major Roads: Urban 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A", dim_location[urban_rural] = "Urban" ), "All Minor Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor ), "Minor Roads: Rural", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor, dim_location[urban_rural] = "Rural" ), "Minor Roads: Urban", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor, dim_location[urban_rural] = "Urban" ) ) VAR KM = CALCULATE ( SUM ( exposure_vehicle_km[vehicle_km_million] ), exposure_vehicle_km[source_table] = "TRA0202", exposure_vehicle_km[geo_code] = "GB" ) RETURN DIVIDE ( SF * 100, KM );
 }
 
 measure SF Per 100K Vehicles
 {
-    expression = VAR SF = [Serious Fatal Casualties] VAR VEH = CALCULATE ( SUM ( exposure_licensed_vehicles[vehicles_thousand] ), exposure_licensed_vehicles[geo_name] = "United Kingdom", exposure_licensed_vehicles[vehicle_type] = "Total" ) RETURN DIVIDE ( SF * 100000, VEH * 1000, 0 );
+    expression = VAR SF = [Serious Fatal Casualties] VAR VEH = CALCULATE ( SUM ( exposure_licensed_vehicles[vehicles_thousand] ), exposure_licensed_vehicles[geo_name] = "Great Britain", exposure_licensed_vehicles[vehicle_type] = "Total" ) RETURN DIVIDE ( SF * 100000, VEH * 1000, 0 );
 }
 
 measure DfT Published KSI Rate

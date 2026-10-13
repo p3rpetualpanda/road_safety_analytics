@@ -32,7 +32,7 @@ fix them silently.
 | # | Field | Issue found | Decision | Where implemented |
 |---|-------|-------------|----------|-------------------|
 | 1 | `collision_severity` / `casualty_severity` | Coded 1/2/3, not words | Kept as int; rows outside {1,2,3} dropped & counted | `clean_severity()` |
-| 2 | `age_of_casualty` | `-1` / 0 / 99 / 999 = unknown codes | Mapped to NULL; banded as "Unknown" | `clean_age()`, `age_band()` |
+| 2 | `age_of_casualty` | `-1` = unknown (0 = under one year old, kept) | Mapped to NULL; banded as "Unknown" | `clean_age()`, `age_band()` |
 | 3 | `time` | New spec is `"HH:MM"` text (legacy was `"HHMM"`) | Parsed to `HH:MM:SS`; invalid → NULL | `clean_time()` |
 | 4 | `latitude` / `longitude` | Missing or out of range | Out-of-range → NULL | `clean_coord()` |
 | 5 | `casualty_class` / `casualty_type` | Two distinct coded fields conflated in the old spec | `casualty_class` = **role** (1=Driver/rider, 2=Passenger, 3=Pedestrian); `casualty_type` = **road-user type** (0=Pedestrian, 1=Cyclist, 9=Car occupant, …). VRU flag now = `casualty_type` in {0, 1} | `is_vru()`, `decode_code()` |
@@ -47,7 +47,7 @@ fix them silently.
 | 14 | `vehicle_type` / `vehicle_manoeuvre` / `propulsion_code` / `age_band_of_driver` | Coded integers | Decoded to labels; unmapped → "Unknown" | `decode_code()` |
 | 15 | `speed_limit` | Now lives in the **accidents** table (was casualties) | Moved to `fact_accident.speed_limit` | `run()` |
 | 16 | `protection`, `driver_impaired` | **No equivalent** in the new spec | Dropped from the warehouse | `schema.sql` |
-| 17 | `local_authority_district` | **100% `-1`** in the 2025 extract (deprecated) — made the district dimension degenerate (all 101,525 accidents → one `-1` row) | Switched the district source to `local_authority_ons_district` (ONS codes: E06=England, E08=Scotland, E09=Wales, S12=Scottish council areas, W06=Wales, E07=London boroughs); `-1` → "Unknown". `dim_location` grew 396 → 2,492 rows. | `run()` (dim_location) |
+| 17 | `local_authority_district` | **100% `-1`** in the 2025 extract (deprecated) — made the district dimension degenerate (all 101,525 accidents → one `-1` row) | Switched the district source to `local_authority_ons_district` (ONS codes: E06=English unitary authorities, E07=English non-metropolitan districts, E08=English metropolitan districts, E09=London boroughs, S12=Scottish council areas, W06=Welsh unitary authorities); `-1` → "Unknown". `dim_location` grew 396 → 2,492 rows. | `run()` (dim_location) |
 
 ## 3. Code-Stability Audit (2021–2025)
 
@@ -238,8 +238,9 @@ yet used in any BQ.
 
 ## 5. Known limitations
 
-- The dataset is a **sample** of police-recorded accidents, not a
-  census; absolute counts understate true incidence.
+- The dataset covers **only police-reported** injury collisions, not all
+  collisions: many injuries (and all damage-only crashes) never reach the
+  police, so absolute counts understate true incidence.
 - The 2025 file uses the **new coded specification**; several legacy
   columns (`protection`, `driver_impaired`) no longer exist and were
   dropped from the warehouse.
@@ -314,7 +315,8 @@ were valid, no orphaned casualties/vehicles, all dates parsed). The
 
 | Date | Change | Author |
 |------|--------|--------|
-| 2026-10-08 | **Phase B: exposure data.** Added `etl/load_exposure.py` (10 DfT ODS files → 6 exposure tables). Fixed 7 bugs: `[note N]` suffixes in year/metric columns, whitespace padding in ODS headers/data, TRA0204 4D cube double-counting, VEH0101 quarterly→annual (Q4 filter), `str.extract` returning DataFrame not Series. Added BQ12 (S/F per 100M km by road class), BQ13 (S/F per 100K vehicles), BQ14 (S/F per 100M km by LA). Added 5 DAX measures (21 total). Added Power BI page 5 (Exposure & Rates). Key findings: per-vehicle risk +12% over 5 years (BQ13), motorway highest S/F rate per 100M km (BQ12), Inner London highest exposure-adjusted rates (BQ14) | jake |
+| 2026-10-12 | **Recheck of every BQ against the raw CSVs.** Fixed: `WEATHER_CONDITIONS`, `ROAD_SURFACE_CONDITIONS` and `FIRST_ROAD_CLASS` code tables (rain was "Fine with precipitation", fog was "Rain", high winds was "Fog", flood was "Oil/gravel", frost/ice was "Flooded", A/B/C roads were "Trunk/Primary/…"), light code 7 ("Twilight" → "Darkness - lighting unknown"); `clean_age` no longer nulls age 0 (under one year; 929 casualties); per-collision `lat/long` added to `fact_accident` (BQ6 had gridded `dim_location`'s one representative point per group); BQ4 bands aligned to DfT driver bands; BQ10 index now on serious/fatal; BQ12 and its DAX measure now divide each road class's own casualties by its own km (was the national total); BQ13 and its DAX measure use the GB fleet (STATS19 excludes NI). Code tables pinned by tests. | Claude, for jake |
+| 2026-10-08 | **Phase B: exposure data.** Added `etl/load_exposure.py` (10 DfT ODS files → 6 exposure tables). Fixed 7 bugs: `[note N]` suffixes in year/metric columns, whitespace padding in ODS headers/data, TRA0204 4D cube double-counting, VEH0101 quarterly→annual (Q4 filter), `str.extract` returning DataFrame not Series. Added BQ12 (S/F per 100M km by road class), BQ13 (S/F per 100K vehicles), BQ14 (S/F per 100M km by LA). Added 5 DAX measures (21 total). Added Power BI page 5 (Exposure & Rates). Key findings: per-vehicle risk +12% over 5 years (BQ13), motorway highest S/F rate per 100M km (BQ12; later found to be a denominator bug, corrected 2026-10-12: motorways are the lowest), Inner London highest exposure-adjusted rates (BQ14) | jake |
 | 2026-10-07 | Loaded the full 2021–2025 extract (513,801 accidents / 652,821 casualties / 937,265 vehicles; `dim_date` 1,826, `dim_location` 2,901). Fixed a `vru_flag` ordering bug: the flag was computed after `casualty_type` was decoded to text, so `to_numeric()` coerced every label to NaN and the flag was always False — now derived from the raw numeric column first (172,139 True). Added a `collision_index` uniqueness + referential-integrity assertion to the ETL | jake |
 | 2026-10-06 | Code-stability audit of the 2021–2025 extract against the DfT data guide (2025): 7 unmapped codes added (weather/road_surface `-1`, vehicle_type `-1`/22/23, manoeuvre 20, propulsion 11); `VEHICLE_TYPE`, `VEHICLE_MANOEUVRE`, `AGE_BAND_OF_DRIVER`, `PROPULSION_CODE` dicts corrected to the data-guide scheme; `casualty_class` (role) split from `casualty_type` (road-user type) — new `casualty_class` column in `fact_casualty`; VRU flag redefined as `casualty_type` in {0,1}; BQ4 driver-age CASE rewritten to the new band scheme | jake |
 | 2026-10-03 | Initial log created | jake |

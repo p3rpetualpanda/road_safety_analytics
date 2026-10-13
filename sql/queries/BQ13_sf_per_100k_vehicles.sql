@@ -1,9 +1,10 @@
 -- ============================================================
 -- BQ13 — Serious+fatal casualties per 100,000 licensed
---        vehicles (national, UK).
+--        vehicles (national, GB).
 -- Grain: one row per year (2021–2025)
 -- Exposure source: VEH0101 (DfT Vehicle Licensing Statistics,
---   year-end Q4 snapshot, thousands of vehicles).
+--   year-end Q4 snapshot, thousands of vehicles). STATS19 covers
+--   Great Britain only, so the fleet is GB, not UK (which adds NI).
 -- Rate = (S/F casualties / (vehicles_thousand × 1000)) × 100000
 -- ============================================================
 WITH sf_by_year AS (
@@ -20,7 +21,7 @@ exposure AS (
         year,
         vehicles_thousand
     FROM exposure_licensed_vehicles
-    WHERE geo_name = 'United Kingdom'
+    WHERE geo_name = 'Great Britain'
       AND vehicle_type = 'Total'
 )
 SELECT
