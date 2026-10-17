@@ -20,6 +20,7 @@ env/
 *.pbit
 *.conn
 *.json
+!dax/road_safety_theme.json
 !package.json
 dax/power_query.m
 

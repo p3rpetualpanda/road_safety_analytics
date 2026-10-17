@@ -1,0 +1,62 @@
+table ras4001_cost_per_casualty
+	lineageTag: 08592fe0-0268-4a66-ae2a-b2179ef6dae8
+
+	column collision_year
+		dataType: int64
+		formatString: 0
+		lineageTag: 0cc84036-b7c6-4a74-9ee3-accf24d396e3
+		summarizeBy: sum
+		sourceColumn: collision_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column price_year
+		dataType: int64
+		formatString: 0
+		lineageTag: 38a54fe5-f950-4e16-a759-4427a4335b99
+		summarizeBy: sum
+		sourceColumn: price_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column severity
+		dataType: string
+		lineageTag: cdab85bb-bf2c-440b-af0b-2ee95abb64d2
+		summarizeBy: none
+		sourceColumn: severity
+
+		annotation SummarizationSetBy = Automatic
+
+	column cost_per_casualty
+		dataType: double
+		lineageTag: 68bbecb5-6b97-454b-87af-9a78c9390017
+		summarizeBy: sum
+		sourceColumn: cost_per_casualty
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column cost_per_collision
+		dataType: double
+		lineageTag: 43d0bb59-8d26-457f-be9f-ee60a6f33b3f
+		summarizeBy: sum
+		sourceColumn: cost_per_collision
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition ras4001_cost_per_casualty = m
+		mode: import
+		source =
+				let
+				  Source = PostgreSQL.Database("localhost", "road_safety"),
+				  #"Navigation 1" = Source{[Schema = "public", Item = "ras4001_cost_per_casualty"]}[Data]
+				in
+				  #"Navigation 1"
+
+	changedProperty = Name
+
+	annotation PBI_ResultType = Table
+

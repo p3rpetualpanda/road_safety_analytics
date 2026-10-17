@@ -1,0 +1,32 @@
+model Model
+	culture: en-GB
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-GB
+	valueFilterBehavior: independent
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_QueryOrder = ["dim_date","dim_location","exposure_licensed_vehicles","exposure_vehicle_km","fact_accident","fact_casualty","fact_vehicle","ras0201_numbers","ras0201_rates","ras4001_cost_per_casualty","ras4001_total_cost","lad_names_codes"]
+
+annotation __TEdtr = 1
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table dim_date
+ref table dim_location
+ref table exposure_licensed_vehicles
+ref table exposure_vehicle_km
+ref table fact_accident
+ref table fact_casualty
+ref table fact_vehicle
+ref table ras0201_numbers
+ref table ras0201_rates
+ref table ras4001_cost_per_casualty
+ref table ras4001_total_cost
+ref table lad_names_codes
+
+ref cultureInfo en-GB
+

@@ -1,0 +1,176 @@
+table fact_accident
+	lineageTag: 100800ec-1804-4efe-9a42-3d9f8ceffb75
+
+	measure 'Total Accidents' = COUNTROWS ( fact_accident )
+		lineageTag: 23528fe5-5c50-478c-acee-f0deb2fa956f
+
+		formatStringDefinition = "#,0"
+
+	measure 'Serious Fatal Accidents' =
+			CALCULATE (
+			    COUNTROWS ( fact_accident ),
+			    fact_accident[severity] IN { 1, 2 }
+			)
+			
+			// ============================================================
+			// Phase B — Exposure-adjusted rate measures
+			// ============================================================
+			// Requires the following tables in the Power BI model:
+			//   - exposure_vehicle_km       (year, geo_code, geo_name,
+			//                                vehicle_type, road_class,
+			//                                vehicle_km_million, source_table)
+			//   - exposure_licensed_vehicles(year, geo_name, vehicle_type,
+			//                                vehicles_thousand, source_table)
+			//   - ras0201_rates             (year, road_user_type, severity,
+			//                                rate_unit, rate_value)
+			//
+			// Required relationships (single direction, dim_date → exposure):
+			//   dim_date[year]  1:*  exposure_vehicle_km[year]
+			//   dim_date[year]  1:*  exposure_licensed_vehicles[year]
+			//   dim_date[year]  1:*  ras0201_rates[year]
+			//
+			// All three exposure tables use dim_date[year] as the join key.
+			// The relationship direction is dim_date → exposure (single),
+			// so date filters flow into the exposure tables automatically.
+			// ============================================================
+			
+			// ------------------------------------------------------------
+			// National S/F rate per 100M vehicle-km (all roads)
+			// Mirrors BQ12 "All Roads" row. Responds to date filter.
+			// ------------------------------------------------------------
+		lineageTag: e3818871-8859-4b84-92ee-63dd91395431
+
+	measure 'Serious Fatal Accident Share' = DIVIDE ( [Serious Fatal Accidents], [Total Accidents] )
+		formatString: 0.00%;-0.00%;0.00%
+		lineageTag: 929f1a21-5055-4aad-afcc-427e625d0ab6
+
+	column accident_index
+		dataType: string
+		lineageTag: 33235956-3e20-48ed-95c8-01efcde87f29
+		summarizeBy: none
+		sourceColumn: accident_index
+
+		annotation SummarizationSetBy = Automatic
+
+	column date_key
+		dataType: int64
+		formatString: 0
+		lineageTag: a70071d5-4af6-483d-99cf-7a34bf42d5ea
+		summarizeBy: none
+		sourceColumn: date_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column location_key
+		dataType: int64
+		formatString: 0
+		lineageTag: fd2a2f94-4e0f-495c-82d9-1b8d2fe0e875
+		summarizeBy: none
+		sourceColumn: location_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column accident_time
+		dataType: dateTime
+		formatString: Long Time
+		lineageTag: 5fc282b0-f2fc-4d18-8438-6ca0e28317fc
+		summarizeBy: none
+		sourceColumn: accident_time
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Time
+
+	column severity
+		dataType: int64
+		formatString: 0
+		lineageTag: e1472587-f0eb-492c-96a8-11e3410d24c0
+		summarizeBy: sum
+		sourceColumn: severity
+
+		annotation SummarizationSetBy = Automatic
+
+	column weather
+		dataType: string
+		lineageTag: 969532c5-589f-4efe-a8eb-db47067992b4
+		summarizeBy: none
+		sourceColumn: weather
+
+		annotation SummarizationSetBy = Automatic
+
+	column lighting
+		dataType: string
+		lineageTag: 9f301878-a980-49a7-9baa-efd42a7ce1de
+		summarizeBy: none
+		sourceColumn: lighting
+
+		annotation SummarizationSetBy = Automatic
+
+	column road_surface
+		dataType: string
+		lineageTag: c71a61cb-e009-4dee-a82c-531992978430
+		summarizeBy: none
+		sourceColumn: road_surface
+
+		annotation SummarizationSetBy = Automatic
+
+	column num_vehicles
+		dataType: int64
+		formatString: 0
+		lineageTag: c049f84e-d423-4932-ac5f-85e6750a1e84
+		summarizeBy: sum
+		sourceColumn: num_vehicles
+
+		annotation SummarizationSetBy = Automatic
+
+	column num_casualties
+		dataType: int64
+		formatString: 0
+		lineageTag: 1f1227dc-4cdf-4bb3-9efc-d1c5566cb930
+		summarizeBy: sum
+		sourceColumn: num_casualties
+
+		annotation SummarizationSetBy = Automatic
+
+	column speed_limit
+		dataType: int64
+		formatString: 0
+		lineageTag: c9e57020-93b1-4bd5-b4e8-c6ecccd60096
+		summarizeBy: sum
+		sourceColumn: speed_limit
+
+		annotation SummarizationSetBy = Automatic
+
+	column lat
+		dataType: double
+		lineageTag: c54f5a63-2b4a-4c2b-b0b9-beea448f41f8
+		summarizeBy: sum
+		sourceColumn: lat
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column long
+		dataType: double
+		lineageTag: ef1f0e55-a238-4287-8b5c-3ef0a84dc00d
+		summarizeBy: sum
+		sourceColumn: long
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition fact_accident = m
+		mode: import
+		source =
+				let
+				  Source = PostgreSQL.Database("localhost", "road_safety"),
+				  #"Navigation 1" = Source{[Schema = "public", Item = "fact_accident"]}[Data]
+				in
+				  #"Navigation 1"
+
+	changedProperty = Name
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,81 @@
+table exposure_licensed_vehicles
+	lineageTag: f36b056d-82b0-4788-ad68-7ddf42be2fea
+
+	measure 'SF Per 100K Vehicles' =
+			VAR SF = [Serious Fatal Casualties]
+			VAR VEH =
+			    CALCULATE (
+			        SUM ( exposure_licensed_vehicles[vehicles_thousand] ),
+			        TREATAS ( VALUES ( dim_date[year] ), exposure_licensed_vehicles[year] ),
+			        exposure_licensed_vehicles[geo_name] = "Great Britain",
+			        exposure_licensed_vehicles[vehicle_type] = "Total"
+			    )
+			RETURN
+			    DIVIDE ( SF * 100000, VEH * 1000, 0 )
+			
+			// ------------------------------------------------------------
+			// DfT published KSI rate (per billion vehicle miles)
+			// From RAS0201 Rates sheet — DfT's own published casualty rates.
+			// Use for validation against our calculated rates.
+			// Note: DfT uses MILES, not km. 1 mile = 1.609344 km.
+			// ------------------------------------------------------------
+		lineageTag: 5c679623-61e6-410d-82e0-da79fdff91c3
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column year
+		dataType: int64
+		formatString: 0
+		lineageTag: 7af5d03e-3450-4977-ab15-e24c057e622d
+		summarizeBy: none
+		sourceColumn: year
+
+		annotation SummarizationSetBy = Automatic
+
+	column geo_name
+		dataType: string
+		lineageTag: 85b98788-c5de-4e0f-a943-32fe44278c95
+		summarizeBy: none
+		sourceColumn: geo_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column vehicle_type
+		dataType: string
+		lineageTag: b43606cd-c0e3-436e-8751-1ba02516bba1
+		summarizeBy: none
+		sourceColumn: vehicle_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column vehicles_thousand
+		dataType: double
+		lineageTag: e8ea3125-1bba-4c1d-946e-31607c2da309
+		summarizeBy: sum
+		sourceColumn: vehicles_thousand
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column source_table
+		dataType: string
+		lineageTag: 9835c67d-3799-440f-bbc2-ddf813aed51f
+		summarizeBy: none
+		sourceColumn: source_table
+
+		annotation SummarizationSetBy = Automatic
+
+	partition exposure_licensed_vehicles = m
+		mode: import
+		source =
+				let
+				  Source = PostgreSQL.Database("localhost", "road_safety"),
+				  #"Navigation 1" = Source{[Schema = "public", Item = "exposure_licensed_vehicles"]}[Data]
+				in
+				  #"Navigation 1"
+
+	changedProperty = Name
+
+	annotation PBI_ResultType = Table
+

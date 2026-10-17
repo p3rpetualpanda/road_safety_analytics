@@ -91,11 +91,11 @@ CALCULATE (
 Serious Fatal YoY Change =
 [Serious Fatal Casualties] - [Serious Fatal Casualties LY]
 
+// Blank (not 0%) when there is no prior year, e.g. 2021 in this extract.
 Serious Fatal YoY % =
 DIVIDE (
     [Serious Fatal YoY Change],
-    [Serious Fatal Casualties LY],
-    0
+    [Serious Fatal Casualties LY]
 )
 
 // 3-year rolling average of serious+fatal casualties (trailing 36 months).

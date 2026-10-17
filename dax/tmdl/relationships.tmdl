@@ -1,0 +1,56 @@
+relationship cd8d5768-be49-411c-8331-4e087b383459
+	fromColumn: fact_accident.date_key
+	toColumn: dim_date.date_key
+
+	annotation PBI_IsFromSource = FS
+
+relationship 513ab376-310b-46d5-92a8-99c44fc97c02
+	fromColumn: fact_accident.location_key
+	toColumn: dim_location.location_key
+
+	annotation PBI_IsFromSource = FS
+
+relationship 679e2d0c-b54d-4871-8df5-661b50c075e0
+	fromColumn: fact_casualty.date_key
+	toColumn: dim_date.date_key
+
+	annotation PBI_IsFromSource = FS
+
+relationship 1d909d2c-ae4c-4a5b-8810-e6410463de84
+	fromColumn: fact_casualty.location_key
+	toColumn: dim_location.location_key
+
+	annotation PBI_IsFromSource = FS
+
+relationship a940f79e-0a9b-4f71-a2ac-085b733e5e90
+	isActive: false
+	fromColumn: fact_casualty.accident_index
+	toColumn: fact_accident.accident_index
+
+	annotation PBI_IsFromSource = FS
+
+relationship f24eaf73-a35f-40ae-8c5d-91b94b1dc352
+	fromColumn: fact_vehicle.accident_index
+	toColumn: fact_accident.accident_index
+
+	annotation PBI_IsFromSource = FS
+
+relationship e2ae7c2f-7e87-9d1c-eb74-25fb1ef4311e
+	toCardinality: many
+	fromColumn: exposure_vehicle_km.year
+	toColumn: dim_date.year
+
+relationship 4178b34c-f0d6-ba29-a378-efcd54733900
+	toCardinality: many
+	fromColumn: exposure_licensed_vehicles.year
+	toColumn: dim_date.year
+
+relationship 90546876-0b7e-9cb4-f86a-4cab1531ff4b
+	toCardinality: many
+	fromColumn: ras0201_rates.year
+	toColumn: dim_date.year
+
+relationship 073c8fd6-6d36-8c1c-1935-a0d37fd899f9
+	fromColumn: dim_location.district
+	toColumn: lad_names_codes.district_code
+

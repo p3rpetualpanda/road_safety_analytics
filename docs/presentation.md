@@ -95,7 +95,7 @@ questions with evidence (11 Phase A + 3 Phase B exposure-adjusted).
 | `dim_date` | one row per day | 1,826 |
 | `dim_location` | one row per district × road class × urban/rural × police force | 2,901 |
 
-- 8 single-directional relationships (3 exposure tables relate to `dim_date[year]`; 3 are disconnected), `dim_date` marked as the date table
+- 9 active single-directional relationships (3 exposure tables relate to `dim_date[year]`, the ONS name lookup to `dim_location`; 3 exposure tables are disconnected) plus 1 inactive casualty → accident link; `dim_date` marked as the date table
 - 9 B-tree indexes on the join/filter columns
 - **Phase B:** 6 additional exposure tables (`exposure_vehicle_km`, `exposure_licensed_vehicles`, `ras0201_numbers`, `ras0201_rates`, `ras4001_cost_per_casualty`, `ras4001_total_cost`) loaded from 10 DfT ODS files (TRA, VEH, RAS) — 3 relate to `dim_date[year]`, 3 are disconnected and joined via DAX
 

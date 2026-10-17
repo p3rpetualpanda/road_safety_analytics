@@ -1,0 +1,137 @@
+table exposure_vehicle_km
+	lineageTag: 29f87d0e-c743-407b-a8d9-f9a1d937095d
+
+	measure 'SF Per 100M Vehicle KM' = ```
+			VAR SF = [Serious Fatal Casualties]
+			VAR KM =
+			    CALCULATE (
+			        SUM ( exposure_vehicle_km[vehicle_km_million] ),
+			        exposure_vehicle_km[source_table] = "TRA0202",
+			        TREATAS ( VALUES ( dim_date[year] ), exposure_vehicle_km[year] ), 
+			        exposure_vehicle_km[geo_code] = "GB",
+			        exposure_vehicle_km[road_class] = "All Roads"
+			    )
+			RETURN
+			    DIVIDE ( SF * 100, KM, 0 )
+			
+			// ------------------------------------------------------------
+			// S/F rate per 100M vehicle-km by road class
+			// Mirrors BQ12. Use with exposure_vehicle_km[road_class] on the axis.
+			// Each class's own S/F casualties (from dim_location road class +
+			// urban/rural) over that class's TRA0202 km. Blank unless exactly one
+			// road class is in context, so subtotal rows are never summed.
+			// ------------------------------------------------------------
+			```
+		lineageTag: 8f8c259a-0f18-40d6-8c27-4975a0f31078
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'SF Per 100M Vehicle KM by Road Class' =
+			VAR Label = SELECTEDVALUE ( exposure_vehicle_km[road_class] )
+			-- TRA0202 labels carry "[note N]" suffixes; compare on the prefix
+			VAR Cls =
+			    IF ( CONTAINSSTRING ( Label, " [note" ), LEFT ( Label, SEARCH ( " [note", Label ) - 1 ), Label )
+			VAR Minor = { "B", "C", "Unclassified" }
+			VAR SF =
+			    SWITCH (
+			        Cls,
+			        "All Roads", [Serious Fatal Casualties],
+			        "All Major Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN { "Motorway", "A(M)", "A" } ),
+			        "Major Roads: Motorway", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN { "Motorway", "A(M)" } ),
+			        "Major Roads: All 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A" ),
+			        "Major Roads: Rural 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A", dim_location[urban_rural] = "Rural" ),
+			        "Major Roads: Urban 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A", dim_location[urban_rural] = "Urban" ),
+			        "All Minor Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor ),
+			        "Minor Roads: Rural", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor, dim_location[urban_rural] = "Rural" ),
+			        "Minor Roads: Urban", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor, dim_location[urban_rural] = "Urban" )
+			    )
+			VAR KM =
+			    CALCULATE (
+			        SUM ( exposure_vehicle_km[vehicle_km_million] ),
+			        exposure_vehicle_km[source_table] = "TRA0202",
+			        TREATAS ( VALUES ( dim_date[year] ), exposure_vehicle_km[year] ),
+			        exposure_vehicle_km[geo_code] = "GB"
+			    )
+			RETURN
+			    DIVIDE ( SF * 100, KM )
+			
+			// ------------------------------------------------------------
+			// National S/F rate per 100k licensed vehicles (GB: STATS19 excludes NI)
+			// Mirrors BQ13. Responds to date filter.
+			// ------------------------------------------------------------
+		lineageTag: 3fcb2e25-2fe2-4688-92ec-4c78802e3646
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column year
+		dataType: int64
+		formatString: 0
+		lineageTag: 208e430d-ad50-4fc7-93c5-57dca01da3c6
+		summarizeBy: none
+		sourceColumn: year
+
+		annotation SummarizationSetBy = Automatic
+
+	column geo_code
+		dataType: string
+		lineageTag: efcef7d7-941e-4b32-8fc0-d10c3c8742b8
+		summarizeBy: none
+		sourceColumn: geo_code
+
+		annotation SummarizationSetBy = Automatic
+
+	column geo_name
+		dataType: string
+		lineageTag: 18a36093-6ddd-48c6-8379-78d59ba5d738
+		summarizeBy: none
+		sourceColumn: geo_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column vehicle_type
+		dataType: string
+		lineageTag: 24c335e5-72a1-45bb-80b1-85eb599b8f8c
+		summarizeBy: none
+		sourceColumn: vehicle_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column road_class
+		dataType: string
+		lineageTag: bdbdcbfe-b6a4-4b1e-baee-459442061e02
+		summarizeBy: none
+		sourceColumn: road_class
+
+		annotation SummarizationSetBy = Automatic
+
+	column vehicle_km_million
+		dataType: double
+		lineageTag: 005e8554-39bf-4a93-8bf8-e66750d44005
+		summarizeBy: sum
+		sourceColumn: vehicle_km_million
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column source_table
+		dataType: string
+		lineageTag: 09394b8d-c45f-4b88-a6c0-d2a4a87adf3f
+		summarizeBy: none
+		sourceColumn: source_table
+
+		annotation SummarizationSetBy = Automatic
+
+	partition exposure_vehicle_km = m
+		mode: import
+		source =
+				let
+				  Source = PostgreSQL.Database("localhost", "road_safety"),
+				  #"Navigation 1" = Source{[Schema = "public", Item = "exposure_vehicle_km"]}[Data],
+				  #"Replaced value" = Table.ReplaceValue(#"Navigation 1", " [note 1]", "", Replacer.ReplaceText, {"road_class"}),
+				  #"Replaced value 1" = Table.ReplaceValue(#"Replaced value", " [note 2]", "", Replacer.ReplaceText, {"road_class"})
+				in
+				  #"Replaced value 1"
+
+	annotation PBI_ResultType = Table
+
