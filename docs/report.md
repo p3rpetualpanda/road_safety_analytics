@@ -48,6 +48,88 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 - **Visualisation:** Power BI Desktop — see `dax/measures.dax` (23 measures)
 - **Data quality:** Refer to `docs/data_quality.md`
 
+### Data model diagram
+
+The warehouse star schema (solid business keys from `sql/schema.sql`), plus the two kinds of link added in the Power BI model: exposure tables joined to `dim_date` on `year`, and the `lad_names_codes` lookup that gives districts their names. `fact_vehicle` has no date or location key of its own, so it reaches both dimensions through `fact_accident`. In Power BI the `fact_accident → fact_casualty` link is kept **inactive**, because casualties already reach the dimensions directly and only one active filter path is allowed. The diagram renders on GitHub; elsewhere it shows as Mermaid source.
+
+```mermaid
+erDiagram
+    dim_date ||--o{ fact_accident : "date_key"
+    dim_date ||--o{ fact_casualty : "date_key"
+    dim_location ||--o{ fact_accident : "location_key"
+    dim_location ||--o{ fact_casualty : "location_key"
+    fact_accident ||--o{ fact_vehicle : "accident_index"
+    fact_accident ||--o{ fact_casualty : "accident_index (inactive in Power BI)"
+    lad_names_codes ||--o{ dim_location : "district (Power BI)"
+    dim_date }o--o{ exposure_vehicle_km : "year (Power BI)"
+    dim_date }o--o{ exposure_licensed_vehicles : "year (Power BI)"
+    dim_date }o--o{ ras0201_rates : "year (Power BI)"
+
+    dim_date {
+        int date_key PK "YYYYMMDD"
+        date full_date
+        int year
+        int month
+        int day_of_week "1 = Mon .. 7 = Sun"
+    }
+    dim_location {
+        int location_key PK
+        text district "ONS code"
+        text road_class
+        text urban_rural
+        text police_force
+    }
+    fact_accident {
+        text accident_index PK
+        int date_key FK
+        int location_key FK
+        smallint severity "1 fatal, 2 serious, 3 slight"
+        text weather
+        text lighting
+        text road_surface
+        numeric lat "per accident"
+        numeric long "per accident"
+    }
+    fact_casualty {
+        text casualty_rec PK
+        text accident_index FK
+        int date_key FK
+        int location_key FK
+        smallint severity
+        text casualty_type
+        boolean vru_flag
+    }
+    fact_vehicle {
+        text vehicle_rec PK
+        text accident_index FK
+        text vehicle_type
+        text manoeuvre
+    }
+    lad_names_codes {
+        text district_code PK
+        text district_name
+    }
+    exposure_vehicle_km {
+        int year
+        text geo_code
+        text road_class
+        numeric vehicle_km_million
+    }
+    exposure_licensed_vehicles {
+        int year
+        text geo_name
+        numeric vehicles_thousand
+    }
+    ras0201_rates {
+        int year
+        text road_user_type
+        text severity
+        numeric rate_value
+    }
+```
+
+The remaining Phase B tables (`ras0201_numbers`, `ras4001_cost_per_casualty`, `ras4001_total_cost`) are disconnected and filtered in DAX, so they are not drawn.
+
 ---
 
 ## 4. Findings
@@ -288,6 +370,7 @@ This project transforms raw DfT road-safety data into a governed SQL data wareho
 - **Miles vs km:** RAS0201 published rates use **miles** (per billion vehicle miles), while our exposure tables use **kilometres**. A conversion factor of 1.609344 km/mile is needed when comparing. DAX measures `DfT Published KSI Rate` and `DfT Published Fatal Rate` use the DfT's mile-based rates directly.
 - **Proxy rates:** BQ12–BQ14 use vehicle-km as the exposure denominator. This is a proxy for true exposure (which would account for time spent on road, speed, and VRU presence). Pedestrian and cyclist exposure is not directly captured in the vehicle-km denominator.
 - **VEH0101 quarterly data:** Vehicle licensing data is quarterly; the ETL uses Q4 (year-end) snapshots as the annual vehicle population estimate.
+- **Reporting bias:** STATS19 records only injury collisions **reported to the police**. DfT acknowledges that a considerable proportion of non-fatal casualties never reach police records, and slight injuries (and cyclists hurt without another vehicle involved) are the most likely to be missed, while fatalities are almost always recorded. All counts are therefore lower bounds, and serious/fatal *shares* are likely somewhat overstated relative to all real-world casualties.
 - **No causal inference:** The analysis is descriptive, not causal. Correlations (e.g., between weather and severity) do not imply causation.
 - **Severity recording:** Police forces using injury-based reporting (CRASH) record more injuries as serious than older systems did. DfT publishes adjusted severity to correct for this; the headline counts here are unadjusted, and BQ9 cross-checks the trend on adjusted severity.
 - **Code tables:** STATS19 fields are coded integers. A wrong code table (weather, lighting, road surface, road class) produced mislabelled results in an earlier version; `tests/test_cleaning.py` now pins the corrected tables.
