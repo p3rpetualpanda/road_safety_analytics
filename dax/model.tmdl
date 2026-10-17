@@ -5,8 +5,10 @@
 // controllable definition of the Phase 4 data model.
 //
 // Contains:
-//   - 11 tables (2 dimensions + 3 facts + 6 exposure)
-//   - 8 single-directional relationships (acyclic star schema)
+//   - 12 tables (2 dimensions + 3 facts + 6 exposure + lad_names_codes lookup)
+//   - 9 single-directional relationships (star schema + one snowflake
+//     branch: lad_names_codes -> dim_location for district names)
+//   - sort-by columns: month_name, day_of_week_name, age_band
 //   - dim_date marked as the official date table (full_date)
 //   - all DAX measures (mirrors dax/measures.dax)
 //
@@ -78,6 +80,7 @@ table dim_date
     column month_name
     {
         type = string;
+        sortByColumn = month;
         description = "Full month name (e.g. January).";
     }
     column quarter
@@ -97,6 +100,7 @@ table dim_date
     column day_of_week_name
     {
         type = string;
+        sortByColumn = day_of_week;
         description = "Day of week name (e.g. Monday).";
     }
     column is_weekend
@@ -153,6 +157,12 @@ table dim_location
         summarizeBy = none;
         formatString = "0.000000";
         description = "Longitude of the accident location (decimal degrees, WGS84).";
+    }
+
+    relationship to_lad_names_codes
+    {
+        fromColumn = dim_location[district];
+        toColumn = lad_names_codes[district_code];
     }
 }
 
@@ -232,6 +242,20 @@ table fact_accident
         formatString = "0";
         description = "Speed limit at the accident location (mph).";
     }
+    column lat
+    {
+        type = number;
+        summarizeBy = none;
+        formatString = "0.000000";
+        description = "Latitude of this accident (decimal degrees, WGS84). Per-accident, unlike dim_location's representative point.";
+    }
+    column long
+    {
+        type = number;
+        summarizeBy = none;
+        formatString = "0.000000";
+        description = "Longitude of this accident (decimal degrees, WGS84).";
+    }
 
     relationship to_dim_date
     {
@@ -290,12 +314,21 @@ table fact_casualty
     column age_band
     {
         type = string;
-        description = "Age band category (e.g. 0-5, 6-10, 11-15, 16-20, 21-30, 31-50, 51-60, 61-70, 70+).";
+        sortByColumn = age_band_order;
+        description = "Five-year age band (0-4, 5-9, ... 105-109), or Unknown.";
+    }
+    column age_band_order
+    {
+        type = number;
+        isHidden = true;
+        summarizeBy = none;
+        expression = IF ( ISBLANK ( fact_casualty[age] ), 999, INT ( fact_casualty[age] / 5 ) * 5 );
+        description = "Sort key for age_band. Built from age, not age_band, to avoid a circular sort dependency.";
     }
     column sex
     {
         type = string;
-        description = "Sex of the casualty (M = Male, F = Female).";
+        description = "Sex of the casualty (Male, Female or Unknown).";
     }
     column casualty_class
     {
@@ -682,6 +715,29 @@ table ras4001_total_cost
 }
 
 // ------------------------------------------------------------
+// lad_names_codes — ONS district code -> name lookup (370 rows)
+// Source: data/lad_names_codes.csv (ONS LAD Dec 2022 + Apr 2025
+// names and codes, covering pre- and post-2023 councils). Loaded
+// in Power BI via Get Data > Text/CSV, not from the warehouse.
+// ------------------------------------------------------------
+table lad_names_codes
+{
+    description = "ONS local authority district names, keyed by the codes in dim_location[district].";
+
+    column district_code
+    {
+        type = string;
+        isHidden = true;
+        description = "ONS district code (e.g. E08000035).";
+    }
+    column district_name
+    {
+        type = string;
+        description = "Council / district name (e.g. Leeds).";
+    }
+}
+
+// ------------------------------------------------------------
 // Measures (mirrors dax/measures.dax)
 // ------------------------------------------------------------
 measure Total Accidents
@@ -717,6 +773,18 @@ measure VRU Share
 measure VRU Serious Fatal Share
 {
     expression = DIVIDE ( CALCULATE ( COUNTROWS ( fact_casualty ), fact_casualty[vru_flag] = TRUE, fact_casualty[severity] IN { 1, 2 } ), [Serious Fatal Casualties], 0 );
+}
+
+measure Vehicle Serious Fatal Share
+{
+    expression = DIVIDE ( CALCULATE ( [Vehicles Involved], fact_accident[severity] IN { 1, 2 } ), [Vehicles Involved] );
+    formatString = "0.0%";
+}
+
+measure Serious Fatal Accident Share
+{
+    expression = DIVIDE ( [Serious Fatal Accidents], [Total Accidents] );
+    formatString = "0.0%";
 }
 
 // Time intelligence — requires dim_date marked as the official
@@ -773,27 +841,27 @@ measure Serious Fatal Accidents
 // ------------------------------------------------------------
 measure SF Per 100M Vehicle KM
 {
-    expression = VAR SF = [Serious Fatal Casualties] VAR KM = CALCULATE ( SUM ( exposure_vehicle_km[vehicle_km_million] ), exposure_vehicle_km[source_table] = "TRA0202", exposure_vehicle_km[geo_code] = "GB", exposure_vehicle_km[road_class] = "All Roads" ) RETURN DIVIDE ( SF * 100, KM, 0 );
+    expression = VAR SF = [Serious Fatal Casualties] VAR KM = CALCULATE ( SUM ( exposure_vehicle_km[vehicle_km_million] ), exposure_vehicle_km[source_table] = "TRA0202", TREATAS ( VALUES ( dim_date[year] ), exposure_vehicle_km[year] ), exposure_vehicle_km[geo_code] = "GB", exposure_vehicle_km[road_class] = "All Roads" ) RETURN DIVIDE ( SF * 100, KM, 0 );
 }
 
 measure SF Per 100M Vehicle KM by Road Class
 {
-    expression = VAR Label = SELECTEDVALUE ( exposure_vehicle_km[road_class] ) VAR Cls = IF ( CONTAINSSTRING ( Label, " [note" ), LEFT ( Label, SEARCH ( " [note", Label ) - 1 ), Label ) VAR Minor = { "B", "C", "Unclassified" } VAR SF = SWITCH ( Cls, "All Roads", [Serious Fatal Casualties], "All Major Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN { "Motorway", "A(M)", "A" } ), "Major Roads: Motorway", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN { "Motorway", "A(M)" } ), "Major Roads: All 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A" ), "Major Roads: Rural 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A", dim_location[urban_rural] = "Rural" ), "Major Roads: Urban 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A", dim_location[urban_rural] = "Urban" ), "All Minor Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor ), "Minor Roads: Rural", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor, dim_location[urban_rural] = "Rural" ), "Minor Roads: Urban", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor, dim_location[urban_rural] = "Urban" ) ) VAR KM = CALCULATE ( SUM ( exposure_vehicle_km[vehicle_km_million] ), exposure_vehicle_km[source_table] = "TRA0202", exposure_vehicle_km[geo_code] = "GB" ) RETURN DIVIDE ( SF * 100, KM );
+    expression = VAR Label = SELECTEDVALUE ( exposure_vehicle_km[road_class] ) VAR Cls = IF ( CONTAINSSTRING ( Label, " [note" ), LEFT ( Label, SEARCH ( " [note", Label ) - 1 ), Label ) VAR Minor = { "B", "C", "Unclassified" } VAR SF = SWITCH ( Cls, "All Roads", [Serious Fatal Casualties], "All Major Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN { "Motorway", "A(M)", "A" } ), "Major Roads: Motorway", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN { "Motorway", "A(M)" } ), "Major Roads: All 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A" ), "Major Roads: Rural 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A", dim_location[urban_rural] = "Rural" ), "Major Roads: Urban 'A' Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] = "A", dim_location[urban_rural] = "Urban" ), "All Minor Roads", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor ), "Minor Roads: Rural", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor, dim_location[urban_rural] = "Rural" ), "Minor Roads: Urban", CALCULATE ( [Serious Fatal Casualties], dim_location[road_class] IN Minor, dim_location[urban_rural] = "Urban" ) ) VAR KM = CALCULATE ( SUM ( exposure_vehicle_km[vehicle_km_million] ), exposure_vehicle_km[source_table] = "TRA0202", TREATAS ( VALUES ( dim_date[year] ), exposure_vehicle_km[year] ), exposure_vehicle_km[geo_code] = "GB" ) RETURN DIVIDE ( SF * 100, KM );
 }
 
 measure SF Per 100K Vehicles
 {
-    expression = VAR SF = [Serious Fatal Casualties] VAR VEH = CALCULATE ( SUM ( exposure_licensed_vehicles[vehicles_thousand] ), exposure_licensed_vehicles[geo_name] = "Great Britain", exposure_licensed_vehicles[vehicle_type] = "Total" ) RETURN DIVIDE ( SF * 100000, VEH * 1000, 0 );
+    expression = VAR SF = [Serious Fatal Casualties] VAR VEH = CALCULATE ( SUM ( exposure_licensed_vehicles[vehicles_thousand] ), TREATAS ( VALUES ( dim_date[year] ), exposure_licensed_vehicles[year] ), exposure_licensed_vehicles[geo_name] = "Great Britain", exposure_licensed_vehicles[vehicle_type] = "Total" ) RETURN DIVIDE ( SF * 100000, VEH * 1000, 0 );
 }
 
 measure DfT Published KSI Rate
 {
-    expression = CALCULATE ( MAX ( ras0201_rates[rate_value] ), ras0201_rates[road_user_type] = "All road users", ras0201_rates[severity] = "KSI (adjusted)" );
+    expression = CALCULATE ( MAX ( ras0201_rates[rate_value] ), ras0201_rates[year] = MAX ( dim_date[year] ), ras0201_rates[road_user_type] = "All road users", ras0201_rates[severity] = "KSI (adjusted)" );
 }
 
 measure DfT Published Fatal Rate
 {
-    expression = CALCULATE ( MAX ( ras0201_rates[rate_value] ), ras0201_rates[road_user_type] = "All road users", ras0201_rates[severity] = "Killed" );
+    expression = CALCULATE ( MAX ( ras0201_rates[rate_value] ), ras0201_rates[year] = MAX ( dim_date[year] ), ras0201_rates[road_user_type] = "All road users", ras0201_rates[severity] = "Killed" );
 }
 
 // ------------------------------------------------------------

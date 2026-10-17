@@ -11,6 +11,7 @@ git** (see `.gitignore`) because they are large and freely re-downloadable.
 | `accidents.csv` | `fact_accident` + `dim_date` + `dim_location` | One row per recorded road accident. |
 | `vehicles.csv` | `fact_vehicle` | One row per vehicle involved in an accident. |
 | `casualties.csv` | `fact_casualty` | One row per person injured or killed. |
+| `lad_names_codes.csv` | Power BI `lad_names_codes` | ONS district code → name lookup (370 rows, **committed**). Built from the ONS "Local Authority Districts Names and Codes in the UK" lists for December 2022 and April 2025, because the crash data uses both pre- and post-2023 council codes; plus `EHEATHROW` → Heathrow Airport. OGL v3.0. |
 
 The three tables are linked by `collision_index`
 (accidents 1:N vehicles, 1:N casualties).

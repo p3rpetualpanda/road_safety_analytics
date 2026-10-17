@@ -66,6 +66,15 @@ DIVIDE (
     0
 )
 
+// Share of vehicles whose crash was serious/fatal. Lives on fact_vehicle so it
+// responds to vehicle_type / manoeuvre; the severity filter on fact_accident
+// flows down the fact_accident -> fact_vehicle relationship. (BQ5, Page 3)
+Vehicle Serious Fatal Share =
+DIVIDE (
+    CALCULATE ( [Vehicles Involved], fact_accident[severity] IN { 1, 2 } ),
+    [Vehicles Involved]
+)
+
 // ------------------------------------------------------------
 // Time intelligence
 // Requires: dim_date marked as the official date table in Power BI
@@ -180,6 +189,12 @@ CALCULATE (
     fact_accident[severity] IN { 1, 2 }
 )
 
+// Share of crashes with at least one serious/fatal casualty. Used for weather and
+// lighting (Page 4), which live on fact_accident. Runs higher than the casualty
+// share because one serious casualty makes the whole crash count.
+Serious Fatal Accident Share =
+DIVIDE ( [Serious Fatal Accidents], [Total Accidents] )
+
 // ============================================================
 // Phase B — Exposure-adjusted rate measures
 // ============================================================
@@ -212,6 +227,7 @@ VAR KM =
     CALCULATE (
         SUM ( exposure_vehicle_km[vehicle_km_million] ),
         exposure_vehicle_km[source_table] = "TRA0202",
+        TREATAS ( VALUES ( dim_date[year] ), exposure_vehicle_km[year] ),
         exposure_vehicle_km[geo_code] = "GB",
         exposure_vehicle_km[road_class] = "All Roads"
     )
@@ -248,6 +264,7 @@ VAR KM =
     CALCULATE (
         SUM ( exposure_vehicle_km[vehicle_km_million] ),
         exposure_vehicle_km[source_table] = "TRA0202",
+        TREATAS ( VALUES ( dim_date[year] ), exposure_vehicle_km[year] ),
         exposure_vehicle_km[geo_code] = "GB"
     )
 RETURN
@@ -262,6 +279,7 @@ VAR SF = [Serious Fatal Casualties]
 VAR VEH =
     CALCULATE (
         SUM ( exposure_licensed_vehicles[vehicles_thousand] ),
+        TREATAS ( VALUES ( dim_date[year] ), exposure_licensed_vehicles[year] ),
         exposure_licensed_vehicles[geo_name] = "Great Britain",
         exposure_licensed_vehicles[vehicle_type] = "Total"
     )
@@ -277,6 +295,7 @@ RETURN
 DfT Published KSI Rate =
 CALCULATE (
     MAX ( ras0201_rates[rate_value] ),
+    ras0201_rates[year] = MAX ( dim_date[year] ),
     ras0201_rates[road_user_type] = "All road users",
     ras0201_rates[severity] = "KSI (adjusted)"
 )
@@ -285,6 +304,7 @@ CALCULATE (
 DfT Published Fatal Rate =
 CALCULATE (
     MAX ( ras0201_rates[rate_value] ),
+    ras0201_rates[year] = MAX ( dim_date[year] ),
     ras0201_rates[road_user_type] = "All road users",
     ras0201_rates[severity] = "Killed"
 )

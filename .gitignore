@@ -1,5 +1,6 @@
 # Raw data (large, re-downloadable from data.dft.gov.uk/road-accidents-safety-data/)
 data/*.csv
+!data/lad_names_codes.csv
 data/*.zip
 !data/.gitkeep
 
@@ -59,3 +60,8 @@ data/archive_2025/
 
 # VS Code workspace file (local editor config)
 *.code-workspace
+
+# Local Claude notes (never commit)
+CLAUDE.md
+mistakes.md
+next-steps.md
