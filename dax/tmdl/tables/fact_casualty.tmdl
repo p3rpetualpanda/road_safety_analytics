@@ -1,0 +1,296 @@
+table fact_casualty
+	lineageTag: f5b2934e-07bc-4755-a0cb-159f215dce24
+
+	measure 'Total Casualties' = COUNTROWS ( fact_casualty )
+		lineageTag: afbab293-9b71-4250-a631-ca63a5182875
+
+	measure 'Serious Fatal Casualties' =
+			CALCULATE (
+			    COUNTROWS ( fact_casualty ),
+			    fact_casualty[severity] IN { 1, 2 }
+			)
+		lineageTag: ba5f240e-828e-45db-bcff-a67436ebc07b
+
+	measure 'Serious Fatal Share' =
+			DIVIDE (
+			    [Serious Fatal Casualties],
+			    [Total Casualties],
+			    0
+			)
+			
+			// Casualties per 100 accidents (severity-adjusted rate)
+		formatString: 0.00%;-0.00%;0.00%
+		lineageTag: bff0e0b0-79d0-4c99-af4c-46f541e738d6
+
+	measure 'Casualties Per 100 Accidents' =
+			DIVIDE (
+			    [Total Casualties] * 100,
+			    [Total Accidents],
+			    0
+			)
+			
+			// Vulnerable road user share of all casualties
+		lineageTag: 75a2bb03-82c0-486e-9c2d-f6344fb5dc84
+
+	measure 'VRU Share' =
+			DIVIDE (
+			    CALCULATE (
+			        COUNTROWS ( fact_casualty ),
+			        fact_casualty[vru_flag] = TRUE
+			    ),
+			    [Total Casualties],
+			    0
+			)
+			
+			// VRU share of serious/fatal casualties only
+		lineageTag: 8be607e8-3368-4ff3-b707-261ff2e9aade
+
+	measure 'VRU Serious Fatal Share' =
+			DIVIDE (
+			    CALCULATE (
+			        COUNTROWS ( fact_casualty ),
+			        fact_casualty[vru_flag] = TRUE,
+			        fact_casualty[severity] IN { 1, 2 }
+			    ),
+			    [Serious Fatal Casualties],
+			    0
+			)
+			
+			// ------------------------------------------------------------
+			// Time intelligence
+			// Requires: dim_date marked as the official date table in Power BI
+			//   (Modeling > Date table > Mark as date table, using full_date).
+			// The 2021-2025 extract now spans five years, so the LY / YoY /
+			// moving-average measures below are fully active.
+			// ------------------------------------------------------------
+		lineageTag: 1b07cf10-668f-4243-84da-7742fca4bb13
+
+	measure 'Serious Fatal Casualties LY' =
+			CALCULATE (
+			    [Serious Fatal Casualties],
+			    DATEADD ( dim_date[full_date], -1, YEAR )
+			)
+		lineageTag: f7171270-a7dd-4b22-9d99-b8bd65d1f2e9
+
+	measure 'Serious Fatal YoY Change' = [Serious Fatal Casualties] - [Serious Fatal Casualties LY]
+		lineageTag: 22e4f8d9-4f93-4508-8a88-e07946c47e89
+
+	measure 'Serious Fatal YoY %' =
+			DIVIDE (
+			    [Serious Fatal YoY Change],
+			    [Serious Fatal Casualties LY]
+			)
+			
+			// 3-year rolling average of serious+fatal casualties (trailing 36 months).
+			// Total over the trailing 3-year window divided by 3 = average annual total.
+			// Useful for smoothing the annual trend line to expose the underlying
+			// direction of travel without single-year noise.
+			// Blank until a full 36 months of data exist (2023 onwards): dividing a
+			// partial window by 3 would draw a fake rising trend for 2021-2022.
+		lineageTag: 51af7edd-b79e-499a-bdf7-b15e971c3c18
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Serious Fatal 3yr Avg' =
+			VAR MaxDate = MAX ( dim_date[full_date] )
+			VAR MinDate = EDATE ( MaxDate, -36 ) + 1
+			VAR DataStart = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) )
+			RETURN
+			    IF (
+			        MinDate < DataStart,
+			        BLANK (),
+			        DIVIDE (
+			            CALCULATE (
+			                [Serious Fatal Casualties],
+			                DATESBETWEEN ( dim_date[full_date], MinDate, MaxDate )
+			            ),
+			            3,
+			            0
+			        )
+			    )
+			
+			// 12-month moving average of serious+fatal casualties (trailing 12 calendar
+			// months). Mirrors BQ9's serious_fatal_ma_12m for the Power BI trend visual.
+			// Blank until a full 12 months of data exist (same reason as the 3yr average).
+		lineageTag: dceeadcd-5de1-4c9a-9b13-af0a1f89b81a
+
+	measure 'Serious Fatal MA 12m' =
+			VAR MaxDate = MAX ( dim_date[full_date] )
+			VAR DataStart = CALCULATE ( MIN ( dim_date[full_date] ), ALL ( dim_date ) )
+			RETURN
+			    IF (
+			        EDATE ( MaxDate, -12 ) + 1 < DataStart,
+			        BLANK (),
+			        CALCULATE (
+			            [Serious Fatal Casualties],
+			            DATESINPERIOD ( dim_date[full_date], MaxDate, -12, MONTH )
+			        ) / 12
+			    )
+			
+			// Seasonality index: the month's serious+fatal count as a % of the
+			// average month (100 = exactly average). Mirrors BQ10's seasonality_index.
+			// Use with a month axis; values >100 are above-average months.
+		lineageTag: 54e7b62e-0fbb-47c6-8b79-bd0a2e937ada
+
+	measure 'Seasonality Index' =
+			VAR MonthCount = [Serious Fatal Casualties]
+			VAR AvgMonth = DIVIDE (
+			    CALCULATE ( [Serious Fatal Casualties], REMOVEFILTERS ( dim_date[month] ) ),
+			    12,
+			    0
+			)
+			RETURN
+			    DIVIDE ( MonthCount, AvgMonth, 0 ) * 100
+			
+			// ------------------------------------------------------------
+			// Top-N helper (use with a TOPN visual or a calculated table)
+			// ------------------------------------------------------------
+			// Serious-injury rate per district (for a ranking visual)
+		lineageTag: 67e07cab-2615-4342-9448-c306d1955a30
+
+	measure 'Serious Per Accident by District' =
+			DIVIDE (
+			    [Serious Fatal Casualties],
+			    [Total Accidents],
+			    0
+			)
+			
+			// ------------------------------------------------------------
+			// Visual-specific measures
+			//
+			// These exist because of how Power BI filter direction works: a measure
+			// only responds to filters on the table it counts (or tables whose filter
+			// flows INTO that table). So the "right" measure depends on which table the
+			// filter column lives in:
+			//   - vehicle_type / manoeuvre live in fact_vehicle  -> count fact_vehicle
+			//   - weather / lighting live in fact_accident        -> count fact_accident
+			// ------------------------------------------------------------
+			
+			// Vehicles involved in accidents (for the vehicle_type & manoeuvre visuals).
+			// COUNTROWS(fact_accident) would NOT respond to vehicle_type/manoeuvre
+			// filters because those columns live in fact_vehicle, not fact_accident.
+		lineageTag: 58db6901-7757-45ac-a354-b76573087997
+
+	column casualty_rec
+		dataType: string
+		lineageTag: 3ba6efa7-8778-4e60-ac17-e06b7b065750
+		summarizeBy: none
+		sourceColumn: casualty_rec
+
+		annotation SummarizationSetBy = Automatic
+
+	column accident_index
+		dataType: string
+		lineageTag: b7beb7f4-88a8-4073-908f-8ade02fda861
+		summarizeBy: none
+		sourceColumn: accident_index
+
+		annotation SummarizationSetBy = Automatic
+
+	column date_key
+		dataType: int64
+		formatString: 0
+		lineageTag: 8f4b9d16-9290-4f3c-bbfc-996efea5f2e5
+		summarizeBy: none
+		sourceColumn: date_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column location_key
+		dataType: int64
+		formatString: 0
+		lineageTag: 7ea866ea-e6bd-44f8-a74e-03a6d54eaa57
+		summarizeBy: none
+		sourceColumn: location_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column age
+		dataType: int64
+		formatString: 0
+		lineageTag: 791a8d1f-7423-463d-9a21-d5459a6f71ed
+		summarizeBy: sum
+		sourceColumn: age
+
+		annotation SummarizationSetBy = Automatic
+
+	column age_band
+		dataType: string
+		lineageTag: 2675e200-22a9-45e9-9986-5d2306bafc9c
+		summarizeBy: none
+		sourceColumn: age_band
+		sortByColumn: age_band_order
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	column sex
+		dataType: string
+		lineageTag: 20174e42-c920-4723-8557-925bb86677a1
+		summarizeBy: none
+		sourceColumn: sex
+
+		annotation SummarizationSetBy = Automatic
+
+	column casualty_class
+		dataType: string
+		lineageTag: 942b5aa4-d0dc-440a-b491-8973fdc1d0a6
+		summarizeBy: none
+		sourceColumn: casualty_class
+
+		annotation SummarizationSetBy = Automatic
+
+	column casualty_type
+		dataType: string
+		lineageTag: c03ebea2-fce7-48a8-9b08-0f0fffe7e8e5
+		summarizeBy: none
+		sourceColumn: casualty_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column severity
+		dataType: int64
+		formatString: 0
+		lineageTag: 67208100-bd90-4b7f-9595-cbf42e445aae
+		summarizeBy: sum
+		sourceColumn: severity
+
+		annotation SummarizationSetBy = Automatic
+
+	column vru_flag
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 907048b3-e84a-4286-8d81-7263ca2c3514
+		summarizeBy: none
+		sourceColumn: vru_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column age_band_order =
+			
+			IF (
+			    ISBLANK ( fact_casualty[age] ),
+			    999,
+			    INT ( fact_casualty[age] / 5 ) * 5
+			)
+		lineageTag: ff8d7c39-9d77-4dee-a64e-03f613488ed7
+		summarizeBy: sum
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition fact_casualty = m
+		mode: import
+		source =
+				let
+				  Source = PostgreSQL.Database("localhost", "road_safety"),
+				  #"Navigation 1" = Source{[Schema = "public", Item = "fact_casualty"]}[Data]
+				in
+				  #"Navigation 1"
+
+	changedProperty = Name
+
+	annotation PBI_ResultType = Table
+

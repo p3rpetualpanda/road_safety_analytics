@@ -1,0 +1,83 @@
+table ras0201_rates
+	lineageTag: 46c96dbc-17c2-426b-a367-0267101b56cb
+
+	measure 'DfT Published KSI Rate' =
+			CALCULATE (
+			    MAX ( ras0201_rates[rate_value] ),
+			    ras0201_rates[year] = MAX ( dim_date[year] ),
+			    ras0201_rates[road_user_type] = "All road users",
+			    ras0201_rates[severity] = "KSI (adjusted)"
+			)
+			
+			// DfT published fatal rate (per billion vehicle miles)
+		lineageTag: e96710e0-b8ae-42dd-86df-18734aef55b6
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'DfT Published Fatal Rate' =
+			CALCULATE (
+			    MAX ( ras0201_rates[rate_value] ),
+			    ras0201_rates[year] = MAX ( dim_date[year] ),
+			    ras0201_rates[road_user_type] = "All road users",
+			    ras0201_rates[severity] = "Killed"
+			)
+		lineageTag: 6d682ef8-ca50-4e0a-9cce-23b6aec2e289
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column year
+		dataType: int64
+		formatString: 0
+		lineageTag: bc326cec-3825-49f1-ac14-13a4aa4bed56
+		summarizeBy: none
+		sourceColumn: year
+
+		annotation SummarizationSetBy = Automatic
+
+	column road_user_type
+		dataType: string
+		lineageTag: 72b43cb1-d8f0-4bc9-bd6e-5f276a8a8e48
+		summarizeBy: none
+		sourceColumn: road_user_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column severity
+		dataType: string
+		lineageTag: 6627f1f8-190c-47b2-a22a-49e2d433bf64
+		summarizeBy: none
+		sourceColumn: severity
+
+		annotation SummarizationSetBy = Automatic
+
+	column rate_unit
+		dataType: string
+		lineageTag: 0e10ee0d-096a-4eca-9e8a-8f7d0ae1f39f
+		summarizeBy: none
+		sourceColumn: rate_unit
+
+		annotation SummarizationSetBy = Automatic
+
+	column rate_value
+		dataType: double
+		lineageTag: 9deb3736-a8a4-4776-aab1-c1711a1186d6
+		summarizeBy: sum
+		sourceColumn: rate_value
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition ras0201_rates = m
+		mode: import
+		source =
+				let
+				  Source = PostgreSQL.Database("localhost", "road_safety"),
+				  #"Navigation 1" = Source{[Schema = "public", Item = "ras0201_rates"]}[Data]
+				in
+				  #"Navigation 1"
+
+	changedProperty = Name
+
+	annotation PBI_ResultType = Table
+

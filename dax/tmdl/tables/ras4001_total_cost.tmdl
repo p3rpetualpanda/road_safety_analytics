@@ -1,0 +1,112 @@
+table ras4001_total_cost
+	lineageTag: faeadffa-c56a-4453-8949-7994324d1047
+
+	column collision_year
+		dataType: int64
+		formatString: 0
+		lineageTag: 940d43d6-59db-413a-bc24-7b06d401abc6
+		summarizeBy: sum
+		sourceColumn: collision_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column price_year
+		dataType: int64
+		formatString: 0
+		lineageTag: 8b7a2a4a-530a-4a0f-89e4-356a52ed34c0
+		summarizeBy: sum
+		sourceColumn: price_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column severity
+		dataType: string
+		lineageTag: dbbf05cd-7281-49ac-a1c6-75add7aa94dc
+		summarizeBy: none
+		sourceColumn: severity
+
+		annotation SummarizationSetBy = Automatic
+
+	column lost_output_mil
+		dataType: double
+		lineageTag: 9b941ac8-378c-4a7d-b562-ba4f7b5bf8a5
+		summarizeBy: sum
+		sourceColumn: lost_output_mil
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column medical_mil
+		dataType: double
+		lineageTag: 9a30405d-fef2-47e7-85a4-99e97c39d41f
+		summarizeBy: sum
+		sourceColumn: medical_mil
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column human_costs_mil
+		dataType: double
+		lineageTag: f650cab3-f66a-4c71-88a6-715468c032c3
+		summarizeBy: sum
+		sourceColumn: human_costs_mil
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column police_mil
+		dataType: double
+		lineageTag: 2a9a51d6-4645-4f30-9716-f6281791317c
+		summarizeBy: sum
+		sourceColumn: police_mil
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column insurance_mil
+		dataType: double
+		lineageTag: 99d37f4c-f5e1-43cb-9a0d-5b02d41a99af
+		summarizeBy: sum
+		sourceColumn: insurance_mil
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column property_damage_mil
+		dataType: double
+		lineageTag: be155d3f-2667-4e21-a759-e72d314a1565
+		summarizeBy: sum
+		sourceColumn: property_damage_mil
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column total_mil
+		dataType: double
+		lineageTag: e80a1919-7d8e-44d5-b5c5-86add05cfb21
+		summarizeBy: sum
+		sourceColumn: total_mil
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition ras4001_total_cost = m
+		mode: import
+		source =
+				let
+				  Source = PostgreSQL.Database("localhost", "road_safety"),
+				  #"Navigation 1" = Source{[Schema = "public", Item = "ras4001_total_cost"]}[Data]
+				in
+				  #"Navigation 1"
+
+	changedProperty = Name
+
+	annotation PBI_ResultType = Table
+

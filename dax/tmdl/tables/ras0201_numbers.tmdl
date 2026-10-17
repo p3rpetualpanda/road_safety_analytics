@@ -1,0 +1,51 @@
+table ras0201_numbers
+	lineageTag: 7d708f8d-f424-4fec-a31c-68e6ecf96f89
+
+	column year
+		dataType: int64
+		formatString: 0
+		lineageTag: 07c595c7-c431-46e0-9a75-6c36bbee523b
+		summarizeBy: sum
+		sourceColumn: year
+
+		annotation SummarizationSetBy = Automatic
+
+	column road_user_type
+		dataType: string
+		lineageTag: 076f6aa0-99d7-428e-b151-3e8a651aa63c
+		summarizeBy: none
+		sourceColumn: road_user_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column severity
+		dataType: string
+		lineageTag: 4ec1b9d7-35a6-4b41-b780-c56e68792082
+		summarizeBy: none
+		sourceColumn: severity
+
+		annotation SummarizationSetBy = Automatic
+
+	column count
+		dataType: double
+		lineageTag: a7202890-655d-49e3-8000-91fe3576e004
+		summarizeBy: sum
+		sourceColumn: count
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition ras0201_numbers = m
+		mode: import
+		source =
+				let
+				  Source = PostgreSQL.Database("localhost", "road_safety"),
+				  #"Navigation 1" = Source{[Schema = "public", Item = "ras0201_numbers"]}[Data]
+				in
+				  #"Navigation 1"
+
+	changedProperty = Name
+
+	annotation PBI_ResultType = Table
+

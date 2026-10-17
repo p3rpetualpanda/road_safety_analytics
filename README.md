@@ -32,6 +32,7 @@ road_safety_analytics/
 ├── data/
 │   ├── README.md             <- where to get the raw CSVs + exposure files
 │   ├── exposure/             <- DfT ODS files (TRA, VEH, RAS) for Phase B (committed)
+│   ├── lad_names_codes.csv   <- ONS district code -> name lookup for Power BI (committed)
 │   └── *.csv                 <- raw DfT CSVs (gitignored, you add them)
 ├── sql/
 │   ├── schema.sql            <- star schema DDL (3 facts + 2 dimensions)
@@ -44,8 +45,9 @@ road_safety_analytics/
 │   ├── test_cleaning.py      <- 39 tests for the cleaning/transform layer
 │   └── test_exposure_helpers.py  <- 20 tests for the Phase B parsing helpers
 ├── dax/
-│   ├── measures.dax          <- Power BI DAX measures (21 measures incl. Phase B rates)
-│   └── model.tmdl            <- full data model in TMDL (11 tables, 8 relationships, measures)
+│   ├── measures.dax          <- Power BI DAX measures (23 measures incl. Phase B rates)
+│   ├── road_safety_theme.json <- Power BI report theme (View → Themes → Browse)
+│   └── tmdl/                 <- full data model as TMDL, exported by Power BI from the .pbix
 └── docs/
     ├── data_quality.md       <- data-quality & governance log
     ├── performance.md        <- EXPLAIN ANALYZE evidence (BQ1, BQ2) + index rationale
@@ -111,10 +113,12 @@ Full step-by-step build guide: **[`docs/power_bi_guide.md`](docs/power_bi_guide.
    `fact_accident`, `fact_casualty`, `fact_vehicle`,
    `exposure_vehicle_km`, `exposure_licensed_vehicles`,
    `ras0201_numbers`, `ras0201_rates`, `ras4001_cost_per_casualty`, `ras4001_total_cost`
-3. In the model view, set the 8 single-directional relationships (see guide §2)
-4. Mark `dim_date` as a **date table** (date column = `full_date`)
-5. Add the measures from `dax/measures.dax` (21 measures)
-6. Build the 5 report pages described in the guide §5
+3. **Get Data → Text/CSV** → `data/lad_names_codes.csv` (district names)
+4. In the model view, set the relationships (see guide §2): 9 active single-directional,
+   including `lad_names_codes[district_code]` → `dim_location[district]`, plus 1 inactive
+5. Mark `dim_date` as a **date table** (date column = `full_date`)
+6. Add the measures from `dax/measures.dax` (23 measures)
+7. Build the 5 report pages described in the guide §5
 
 ## Business questions answered
 
@@ -148,7 +152,7 @@ make test                 # or: python -m pytest tests/ -q
 | SQL analytics | `sql/queries/` — 14 business questions (CTEs, window functions, ranking) |
 | Data quality & governance | `docs/data_quality.md` — decision log, code-stability audit, OGL citation |
 | Performance engineering | `docs/performance.md` — EXPLAIN ANALYZE, index design, work_mem tuning |
-| DAX / Power BI | `dax/measures.dax`, `dax/model.tmdl` — 21 measures, 11-table versionable TMDL model |
+| DAX / Power BI | `dax/measures.dax`, `dax/tmdl/` — 23 measures, 12-table TMDL model exported by Power BI |
 | Testing & CI | `tests/` (59 tests), `make check`, GitHub Actions workflow |
 | Documentation | `docs/report.md`, `docs/presentation.md`, this README |
 
@@ -163,12 +167,12 @@ make test                 # or: python -m pytest tests/ -q
 
 ## Status
 
-_Last updated: 2026-10-12._
+_Last updated: 2026-10-17._
 
 The project is **complete (Phases 0–6 + Phase A + Phase B)**. All 14 business
 questions are validated against the live warehouse, the Power BI report
 (`road_safety_visuals.pbix`) is built with all 5 pages, the star schema, and
-21 DAX measures, the final written report (`docs/report.md`) is finished
+23 DAX measures, the final written report (`docs/report.md`) is finished
 with evidence-based insights and recommendations, query performance is
 documented with `EXPLAIN ANALYZE` evidence (`docs/performance.md`), and the
 10-15 minute presentation deck is ready (`docs/presentation.md`).
@@ -179,7 +183,7 @@ documented with `EXPLAIN ANALYZE` evidence (`docs/performance.md`), and the
 | 1 | Data acquisition & profiling (2021–2025 five-year DfT extract) | ✅ Complete |
 | 2 | Star schema + idempotent ETL (3 facts, 2 dimensions) | ✅ Complete & verified |
 | 3 | SQL analytics — BQ1–BQ14 | ✅ Complete (all 14 validated) |
-| 4 | Power BI report (model, DAX, 5 pages) | ✅ Complete (report built, 21 measures) |
+| 4 | Power BI report (model, DAX, 5 pages) | ✅ Complete (report rebuilt 2026-10-17: share/rate charts, district names, 23 measures) |
 | 5 | Insights & recommendations | ✅ Complete (8 insights in `docs/report.md`) |
 | 6 | Documentation, testing & presentation | ✅ Complete (59 tests passing, CI on every push/PR, report finalised, `docs/performance.md`, `docs/presentation.md`) |
 | A | Multi-year expansion (2021–2025) | ✅ Complete (5-year ETL, BQ9–BQ11, 3 new DAX measures) |

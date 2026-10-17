@@ -1,0 +1,30 @@
+table lad_names_codes
+	lineageTag: 453590d8-636d-47f2-b640-a042149666d2
+
+	column district_code
+		dataType: string
+		lineageTag: 3f3a53f4-c6ee-4cc3-98a2-b742054f7106
+		summarizeBy: none
+		sourceColumn: district_code
+
+		annotation SummarizationSetBy = Automatic
+
+	column district_name
+		dataType: string
+		lineageTag: 671e0471-3a7b-481c-8e7b-7c37c7c4069d
+		summarizeBy: none
+		sourceColumn: district_name
+
+		annotation SummarizationSetBy = Automatic
+
+	partition lad_names_codes = m
+		mode: import
+		source =
+				let
+				  Source = Csv.Document(File.Contents("C:\Users\jake\Documents\GitHub\Projects\road_safety_analytics\data\lad_names_codes.csv"), [Delimiter = ",", Columns = 2, QuoteStyle = QuoteStyle.None]),
+				  #"Promoted headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true])
+				in
+				  #"Promoted headers"
+
+	annotation PBI_ResultType = Table
+

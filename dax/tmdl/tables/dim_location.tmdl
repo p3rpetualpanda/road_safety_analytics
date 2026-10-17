@@ -1,0 +1,77 @@
+table dim_location
+	lineageTag: 9af5bb21-d57f-4f95-b883-6964cf5311ad
+
+	column location_key
+		dataType: int64
+		formatString: 0
+		lineageTag: 9e4ded6d-2ada-4422-b296-b4daee8033f9
+		summarizeBy: none
+		sourceColumn: location_key
+
+		annotation SummarizationSetBy = Automatic
+
+	column district
+		dataType: string
+		lineageTag: e7acfbd7-31d2-4eae-bbf8-a358295a502e
+		summarizeBy: none
+		sourceColumn: district
+
+		annotation SummarizationSetBy = Automatic
+
+	column road_class
+		dataType: string
+		lineageTag: faba016f-c156-4a52-974c-c51c8adebb0b
+		summarizeBy: none
+		sourceColumn: road_class
+
+		annotation SummarizationSetBy = Automatic
+
+	column urban_rural
+		dataType: string
+		lineageTag: aa3fc63c-4ee3-491f-a215-c4ab8350318f
+		summarizeBy: none
+		sourceColumn: urban_rural
+
+		annotation SummarizationSetBy = Automatic
+
+	column police_force
+		dataType: string
+		lineageTag: 262f65b4-615f-4e9e-8613-ce62a35d6859
+		summarizeBy: none
+		sourceColumn: police_force
+
+		annotation SummarizationSetBy = Automatic
+
+	column lat
+		dataType: double
+		lineageTag: d01d5f59-3084-42c3-9dbf-7c79069d1aec
+		summarizeBy: sum
+		sourceColumn: lat
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column long
+		dataType: double
+		lineageTag: 673f37df-4a13-4bce-822b-09f9c2df3736
+		summarizeBy: sum
+		sourceColumn: long
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition dim_location = m
+		mode: import
+		source =
+				let
+				  Source = PostgreSQL.Database("localhost", "road_safety"),
+				  #"Navigation 1" = Source{[Schema = "public", Item = "dim_location"]}[Data]
+				in
+				  #"Navigation 1"
+
+	changedProperty = Name
+
+	annotation PBI_ResultType = Table
+

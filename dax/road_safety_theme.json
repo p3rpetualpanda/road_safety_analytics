@@ -1,0 +1,25 @@
+{
+  "name": "Road Safety Analytics",
+  "dataColors": [
+    "#1F4E79",
+    "#C8553D",
+    "#7A8A99",
+    "#2E8B8B",
+    "#B8860B",
+    "#5B5F97",
+    "#A0A0A0",
+    "#3C6E47"
+  ],
+  "background": "#FFFFFF",
+  "foreground": "#252423",
+  "tableAccent": "#1F4E79",
+  "good": "#3C6E47",
+  "neutral": "#B8860B",
+  "bad": "#C8553D",
+  "textClasses": {
+    "callout": { "fontSize": 28, "fontFace": "Segoe UI Semibold", "color": "#1F4E79" },
+    "title": { "fontSize": 13, "fontFace": "Segoe UI Semibold", "color": "#252423" },
+    "header": { "fontSize": 12, "fontFace": "Segoe UI Semibold", "color": "#252423" },
+    "label": { "fontSize": 10, "fontFace": "Segoe UI", "color": "#605E5C" }
+  }
+}

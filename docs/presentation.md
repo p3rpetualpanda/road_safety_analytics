@@ -67,7 +67,7 @@ questions with evidence (11 Phase A + 3 Phase B exposure-adjusted).
  Raw CSVs  ──►  ETL (Python/pandas)  ──►  PostgreSQL star schema
  (DfT)          clean + decode            3 facts + 2 dims + 6 exposure
                                                         │
-        Power BI report  ◄──  21 DAX measures  ◄──  14 SQL queries (BQ1–BQ14)
+        Power BI report  ◄──  23 DAX measures  ◄──  14 SQL queries (BQ1–BQ14)
         (5 pages)
 ```
 
@@ -95,7 +95,7 @@ questions with evidence (11 Phase A + 3 Phase B exposure-adjusted).
 | `dim_date` | one row per day | 1,826 |
 | `dim_location` | one row per district × road class × urban/rural × police force | 2,901 |
 
-- 8 single-directional relationships (3 exposure tables relate to `dim_date[year]`; 3 are disconnected), `dim_date` marked as the date table
+- 9 active single-directional relationships (3 exposure tables relate to `dim_date[year]`, the ONS name lookup to `dim_location`; 3 exposure tables are disconnected) plus 1 inactive casualty → accident link; `dim_date` marked as the date table
 - 9 B-tree indexes on the join/filter columns
 - **Phase B:** 6 additional exposure tables (`exposure_vehicle_km`, `exposure_licensed_vehicles`, `ras0201_numbers`, `ras0201_rates`, `ras4001_cost_per_casualty`, `ras4001_total_cost`) loaded from 10 DfT ODS files (TRA, VEH, RAS) — 3 relate to `dim_date[year]`, 3 are disconnected and joined via DAX
 
@@ -115,7 +115,7 @@ This is where the real analyst work happened. Highlights:
 - **Degenerate district** — `local_authority_district` was **100% `-1`** in
   the 2025 extract. Every accident would have collapsed into one district.
   I switched to the ONS district code → `dim_location` grew 396 → 2,492 (2025-only extract; 2,901 on the full 2021–2025 load).
-- **Unknown-age codes** — `-1`/0/99/999 mapped to a real "Unknown" band.
+- **Unknown-age code** — `-1` mapped to a real "Unknown" band (age 0 = under one year old, kept).
 - **Honest "Unknown" buckets** — ~67% of vehicle records have unknown type.
   That's a genuine source gap, not my bug — I verified it and said so.
 
@@ -298,7 +298,7 @@ governed warehouse and a Power BI report that shows a road-safety authority
 **vulnerable road users are 57.2% of serious/fatal casualties**.
 
 - 14 business questions answered with validated SQL (11 Phase A + 3 Phase B)
-- 21 DAX measures, 5 report pages, 6 exposure tables
+- 23 DAX measures, 5 report pages, 6 exposure tables, ONS district names
 - 59 tests, EXPLAIN-verified performance, full data-quality log
 - Reproducible end-to-end from a clean state in < 30 minutes
 

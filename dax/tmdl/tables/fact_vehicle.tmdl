@@ -1,0 +1,99 @@
+table fact_vehicle
+	lineageTag: 82cface9-4664-4338-8d08-a96d4753cca2
+
+	measure 'Vehicles Involved' =
+			COUNTROWS ( fact_vehicle )
+			
+			// Serious/fatal ACCIDENTS (for the weather & lighting visuals).
+			// Weather and lighting are recorded per accident, so counting the accidents
+			// that were serious/fatal is the correct semantics. COUNTROWS(fact_casualty)
+			// would NOT respond to these filters because they live in fact_accident.
+		lineageTag: f46c0920-dea4-48f5-838c-b2f8433f2620
+
+	measure 'Vehicle Serious Fatal Share' =
+			
+			DIVIDE (
+			    CALCULATE ( [Vehicles Involved], fact_accident[severity] IN { 1, 2 } ),
+			    [Vehicles Involved]
+			)
+		formatString: 0.00%;-0.00%;0.00%
+		lineageTag: fd12ee28-ee8a-45d3-886d-955cdaf44f8f
+
+	column vehicle_rec
+		dataType: string
+		lineageTag: 4bf6ac66-3ab9-456c-b2a3-7c7b1f09188a
+		summarizeBy: none
+		sourceColumn: vehicle_rec
+
+		annotation SummarizationSetBy = Automatic
+
+	column accident_index
+		dataType: string
+		lineageTag: 52196427-9129-488e-8339-3eb641d84097
+		summarizeBy: none
+		sourceColumn: accident_index
+
+		annotation SummarizationSetBy = Automatic
+
+	column vehicle_type
+		dataType: string
+		lineageTag: 789ff527-491a-450d-8b96-3e7c86c56919
+		summarizeBy: none
+		sourceColumn: vehicle_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column manoeuvre
+		dataType: string
+		lineageTag: dcae7f8b-ff70-4e2b-a32d-e4395d191b1b
+		summarizeBy: none
+		sourceColumn: manoeuvre
+
+		annotation SummarizationSetBy = Automatic
+
+	column engine_size_cc
+		dataType: int64
+		formatString: 0
+		lineageTag: aa6e23cd-0ba6-4ee9-ad35-d9e9a886946c
+		summarizeBy: sum
+		sourceColumn: engine_size_cc
+
+		annotation SummarizationSetBy = Automatic
+
+	column propellant
+		dataType: string
+		lineageTag: 384eaa36-0014-4b32-8a5b-59463bc3db87
+		summarizeBy: none
+		sourceColumn: propellant
+
+		annotation SummarizationSetBy = Automatic
+
+	column driver_age_band
+		dataType: string
+		lineageTag: cf047435-94fc-4025-b264-9d42c9b101bc
+		summarizeBy: none
+		sourceColumn: driver_age_band
+
+		annotation SummarizationSetBy = Automatic
+
+	column driver_sex
+		dataType: string
+		lineageTag: 45f0f16d-2a5d-4b1c-8b65-b8ca5ab13322
+		summarizeBy: none
+		sourceColumn: driver_sex
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fact_vehicle = m
+		mode: import
+		source =
+				let
+				  Source = PostgreSQL.Database("localhost", "road_safety"),
+				  #"Navigation 1" = Source{[Schema = "public", Item = "fact_vehicle"]}[Data]
+				in
+				  #"Navigation 1"
+
+	changedProperty = Name
+
+	annotation PBI_ResultType = Table
+
