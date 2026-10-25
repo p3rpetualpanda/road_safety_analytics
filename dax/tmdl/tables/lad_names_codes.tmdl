@@ -21,7 +21,7 @@ table lad_names_codes
 		mode: import
 		source =
 				let
-				  Source = Csv.Document(File.Contents("C:\Users\jake\Documents\GitHub\Projects\road_safety_analytics\data\lad_names_codes.csv"), [Delimiter = ",", Columns = 2, QuoteStyle = QuoteStyle.None]),
+				  Source = Csv.Document(File.Contents("C:\path\to\road_safety_analytics\data\lad_names_codes.csv"), [Delimiter = ",", Columns = 2, QuoteStyle = QuoteStyle.None]),
 				  #"Promoted headers" = Table.PromoteHeaders(Source, [PromoteAllScalars = true])
 				in
 				  #"Promoted headers"
